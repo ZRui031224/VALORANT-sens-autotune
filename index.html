@@ -850,7 +850,7 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:26px 26px 40px;c
 <footer>
   <div class="footer-in">
     <div>
-      <b style="color:var(--dim)">VAL // SENS LAB</b> <span style="color:var(--dim2);font-size:10.5px">v0.1.1</span> · 本地计算，不联网、不上传成绩。<br>
+      <b style="color:var(--dim)">VAL // SENS LAB</b> <span style="color:var(--dim2);font-size:10.5px">v0.1.2</span> · 本地计算，不联网、不上传成绩。<br>
       换算依据：VALORANT 官方 yaw = 0.07° / 计数，横向 FOV 103°，灵敏度可输入 0.1–10.0。
     </div>
     <div>
@@ -1606,7 +1606,7 @@ var toastEl = $('#toast');
 var toastTimer = 0;
 function toast(msg) {
   if (!toastEl) return;
-  toastEl.textContent = msg;
+  toastEl.textContent = trText(msg);
   toastEl.classList.add('on');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function () { toastEl.classList.remove('on'); }, 1600);
@@ -1942,9 +1942,9 @@ var Stage = {
     $('#cdBox').style.display = 'none';
     this.effects = [];
     var cfg = this.cfg;
-    $('#hudMainL').textContent = cfg.hudMainL || '命中';
-    $('#hudTimeL').textContent = cfg.hudTimeL || '用时';
-    $('#hudHint').textContent = cfg.hint;
+    $('#hudMainL').textContent = trText(cfg.hudMainL || '命中');
+    $('#hudTimeL').textContent = trText(cfg.hudTimeL || '用时');
+    $('#hudHint').textContent = trText(cfg.hint);
     if (cfg.duration) this.initTrack();
     else this.spawnTarget();
     this.updateHud(true);
@@ -2350,7 +2350,7 @@ var Stage = {
       var cd = $('#cdNum');
       var txt = String(n);
       if (cd.textContent !== txt) { cd.textContent = txt; this.popCd(); }
-      $('#cdHint').textContent = this.pendingResume ? '继续' : '准备瞄准';
+      $('#cdHint').textContent = trText(this.pendingResume ? '继续' : '准备瞄准');
       pct = 1 - this.cdLeft / Math.max(this.cdLen, 0.01);
       mainTxt = r.hits + ' / ' + r.count;
       timeTxt = '0.0';
@@ -2361,22 +2361,22 @@ var Stage = {
         mainTxt = Math.round((r.totalT > 0 ? r.onTime / r.totalT : 0) * 100) + '%';
         timeTxt = f1(Math.max(0, this.cfg.duration - this.runT));
         pct = clamp(this.runT / this.cfg.duration, 0, 1);
-        mainL.textContent = '覆盖';
-        timeL.textContent = '剩余';
+        mainL.textContent = trText('覆盖');
+        timeL.textContent = trText('剩余');
       } else if (this.testKey === 'free') {
         mainTxt = String(r.hits);
         timeTxt = f3(this.sens * this.mul);
         pct = (r.hits % 1) ? 0 : 0;
-        mainL.textContent = '命中';
+        mainL.textContent = trText('命中');
         timeL.textContent = 'SENS';
-        $('#hudHint').textContent = '微调 ' + (this.mul > 1 ? '+' : '') + Math.round((this.mul - 1) * 100) + '% · - / = 调整 · Esc 结束';
+        $('#hudHint').textContent = trText('微调 ' + (this.mul > 1 ? '+' : '') + Math.round((this.mul - 1) * 100) + '% · - / = 调整 · Esc 结束');
       } else {
         mainTxt = r.hits + ' / ' + r.count;
         timeTxt = f1(this.runT);
         pct = (r.hits + r.misses) / Math.max(r.count, 1);
         mainL.textContent = '命中';
         timeL.textContent = '用时';
-        $('#hudHint').textContent = r.misses ? ('失误 ' + r.misses + ' · ' + this.cfg.hint) : this.cfg.hint;
+        $('#hudHint').textContent = trText(r.misses ? ('失误 ' + r.misses + ' · ' + this.cfg.hint) : this.cfg.hint);
       }
     } else {
       mainTxt = main.textContent;
@@ -3433,9 +3433,9 @@ function init() {
   var _rt = renderTestCards;
   renderTestCards = function () { _rt.apply(null, arguments); if (LANG !== 'zh') applyI18n(document.body); };
   var _si = Stage.showIntro;
-  Stage.showIntro = function () { _si.call(Stage); if (LANG !== 'zh') applyI18n(document.body); };
+  Stage.showIntro = function () { _si.apply(Stage, arguments); if (LANG !== 'zh') applyI18n(document.body); };
   var _sr = Stage.showResultPanel;
-  Stage.showResultPanel = function () { _sr.call(Stage); if (LANG !== 'zh') applyI18n(document.body); };
+  Stage.showResultPanel = function () { _sr.apply(Stage, arguments); if (LANG !== 'zh') applyI18n(document.body); };
 })();
 
 init();
