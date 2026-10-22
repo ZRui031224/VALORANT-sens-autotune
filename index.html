@@ -75,6 +75,12 @@ b,strong{font-weight:700}
 .steps a:hover{color:#fff;border-color:var(--line2);background:rgba(255,255,255,.03)}
 .steps a.on{color:#fff;border-color:rgba(255,70,85,.5);background:rgba(255,70,85,.1)}
 .steps a.on i{color:var(--red)}
+.lang-wrap{display:flex;align-items:center;margin-left:10px}
+#langSel{
+  background:#0b1117;border:1px solid var(--line2);color:var(--txt);font-family:inherit;
+  font-size:11.5px;letter-spacing:.04em;padding:6px 9px;outline:none;cursor:pointer;
+}
+#langSel:hover{border-color:#48606f;color:#fff}
 .topstat{display:flex;align-items:center;gap:9px;padding-left:20px;border-left:1px solid var(--line)}
 .topstat span{font-size:10.5px;letter-spacing:.14em;color:var(--dim2)}
 .topstat b{font-size:17px;color:var(--red);letter-spacing:.02em}
@@ -459,6 +465,7 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:26px 26px 40px;c
       <a href="#s3" data-nav="s3"><i>03</i>专项校准</a>
       <a href="#s4" data-nav="s4"><i>04</i>游戏数值</a>
     </nav>
+    <div class="lang-wrap"><select id="langSel" aria-label="Language"><option value="zh">简体中文</option><option value="en">English</option></select></div>
     <div class="topstat"><span>SENS</span><b id="topBase">0.350</b></div>
   </div>
 </header>
@@ -843,7 +850,7 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:26px 26px 40px;c
 <footer>
   <div class="footer-in">
     <div>
-      <b style="color:var(--dim)">VAL // SENS LAB</b> · 本地计算，不联网、不上传成绩。<br>
+      <b style="color:var(--dim)">VAL // SENS LAB</b> <span style="color:var(--dim2);font-size:10.5px">v0.1.1</span> · 本地计算，不联网、不上传成绩。<br>
       换算依据：VALORANT 官方 yaw = 0.07° / 计数，横向 FOV 103°，灵敏度可输入 0.1–10.0。
     </div>
     <div>
@@ -923,6 +930,529 @@ footer{border-top:1px solid var(--line);margin-top:60px;padding:26px 26px 40px;c
    ===================================================================== */
 (function () {
 'use strict';
+
+
+/* ===================== i18n ===================== */
+var LANG = 'zh';
+var LANG_KEY = 'val_sens_lab_lang';
+var EN_TXT = {
+"VAL // SENS LAB": "VAL // SENS LAB",
+"无畏契约 · 个人灵敏度生成器": "VALORANT · Personal Sensitivity Generator",
+"习惯档案": "Profile",
+"内嵌测试": "Aim Lab",
+"专项校准": "Calibration",
+"游戏数值": "In-game Values",
+"找到只属于你的": "Find your own ",
+"战术灵敏度": "tactical sensitivity",
+"不用照抄职业选手。先读取你的 DPI、握姿、鼠标垫与瞄准习惯，再用内嵌的悬停甩枪 / 微目标精准 / 动态追踪测试反复测量，拟合出误差-速度的最佳平衡点，最后输出一个能直接填进《无畏契约》的三位小数数值。": "Don't copy a pro's settings. Your DPI, grip, mousepad and aiming habits come first. The built-in hover-flick, micro-precision and tracking tests measure how you actually perform, fit the speed/accuracy sweet spot, and output a 3-decimal value you can type straight into VALORANT.",
+"开始内嵌测试": "Start the aim test",
+"先填习惯档案": "Set up profile first",
+"官方每计数转角，测试画面与游戏同源换算": "Official degrees per count — the test uses the same math as the game",
+"锁定的横向 FOV，按游戏原生投影绘制": "Locked horizontal FOV, native projection",
+"三位小数输出，可直接键入游戏设置": "3-decimal output, type it straight into the game",
+"当前测试基准": "Current baseline",
+"实时计算": "Live",
+"基于现有手感": "From your current sens",
+"180° 手臂行程": "180° swipe",
+"快 · 腕流": "Fast · wrist",
+"均衡": "Balanced",
+"稳 · 臂流": "Stable · arm",
+"这是测试起点，不是最终答案。完成内嵌测试后会自动修正。": "This is the starting point, not the answer. It gets corrected after the tests.",
+"建立你的瞄准档案": "Build your aim profile",
+"所有数值都在本地计算，不会上传。请按鼠标驱动里真实使用的参数填写。": "Everything is computed locally. Use the values your mouse driver actually runs.",
+"外设参数": "Hardware",
+"鼠标 DPI": "Mouse DPI",
+"驱动里设置的值": "as set in your driver",
+"必须与鼠标驱动 / 板载配置一致，否则 egame 内实际灵敏度会偏差。": "Must match your driver or onboard profile, otherwise in-game sensitivity will drift.",
+"必须与鼠标驱动 / 板载配置一致，否则游戏内实际灵敏度会偏差。": "Must match your driver or onboard profile, otherwise in-game sensitivity will drift.",
+"当前游戏灵敏度": "Current in-game sensitivity",
+"0.1 – 10.0，可留空": "0.1 – 10.0, optional",
+"不知道就留空，从零推导": "Leave blank to derive from scratch",
+"填了会把你的现有手感当先验：测试只会围绕它微调，不会推翻重来。": "If filled, your current feel becomes the prior — the tests only nudge around it.",
+"鼠标垫可用宽度": "Usable mousepad width",
+"显示器刷新率": "Monitor refresh rate",
+"鼠标垫宽度只用于“180° 回正是否够用”的物理约束：一次完整转身不应该超过垫面可用宽度。": "Pad width only constrains the 180° turn: a full turn shouldn't need more than the usable width.",
+"操作习惯": "Play style",
+"主要发力方式": "Aiming motion",
+"大臂流": "Arm",
+"手臂主导 · 慢而稳": "Arm-dominant · slow and steady",
+"手臂 + 手腕": "Hybrid",
+"手臂+手腕": "Hybrid",
+"大多数人的真实状态": "What most players actually do",
+"手腕流": "Wrist",
+"腕部主导 · 快而活": "Wrist-dominant · fast and nimble",
+"常用定位": "Main role",
+"决斗/高频对枪": "Duelist",
+"决斗 / 高频对枪": "Duelist",
+"需要大量转身": "Tons of turns and entries",
+"全能/混合位": "Flex",
+"全能 / 混合位": "Flex",
+"均衡需求": "Balanced needs",
+"控场/哨位": "Controller / Sentinel",
+"控场 / 哨位": "Controller / Sentinel",
+"架点为主": "Mostly holding angles",
+"狙击/精准优先": "Sniper",
+"狙击 / 精准优先": "Sniper",
+"微调要求高": "Precision matters",
+"最常见的失误": "Most common miss",
+"经常甩过头": "I overshoot",
+"准星冲过目标": "Crosshair flies past the target",
+"比较均衡": "Fairly balanced",
+"没什么固定毛病": "No obvious habit",
+"经常甩不到": "I undershoot",
+"准星停得太早": "Crosshair stops short",
+"手感偏好": "Feel preference",
+"快 · 灵活": "Fast · agile",
+"精准 · 稳定": "Precise · stable",
+"偏快": "Fast",
+"略快": "Slightly fast",
+"略稳": "Slightly steady",
+"偏稳": "Steady",
+"内嵌瞄准实验室": "Built-in aim lab",
+"测试画面按《无畏契约》原生 103° 横向 FOV 与 0.07° / 计数 的比例绘制，测出来的手感与游戏内一致。": "The test is drawn with VALORANT's native 103° horizontal FOV and 0.07° per count, so what you feel here matches the game.",
+"规则：准星碰到目标就算命中，全程不需要点击。": "Rule: touching a target with your crosshair counts as a hit. No clicking, ever.",
+"解除锁定即暂停。": "Unlocking pauses the test.",
+"悬停甩枪": "Hover Flick",
+"Aimlabs 风格的大范围甩枪。考验大角度定位速度与路径效率。": "An Aimlabs-style wide flick. Tests large-angle acquisition speed and path efficiency.",
+"目标": "Targets",
+"角度": "Angle",
+"约": "~",
+"微目标精准": "Micro Precision",
+"小目标 + 限时。灵敏度过高会抖、过低会慢，是拟合曲线的主要依据。": "Small targets under a time limit. Too fast and you jitter, too slow and you can't reach — this is the core of the fit.",
+"距离": "Range",
+"限时": "Limit",
+"动态追踪": "Tracking",
+"移动目标持续覆盖。检验灵敏度在跟枪时是否稳定、会不会追不上。": "Hold your crosshair on a moving target. Checks stability and whether you can keep up.",
+"时长": "Length",
+"峰值": "Peak",
+"一键智能生成": "One-click generation",
+"每次在 0.80× / 1.00× / 1.25× 三档各跑 16 个目标（顺序随机，抵消学习与疲劳），再把": "Each run tests 16 targets at 0.80× / 1.00× / 1.25× (randomized order to cancel learning and fatigue), then",
+"所有已测轮次": "all recorded rounds",
+"汇总做最小二乘拟合、取峰值并在附近补一轮精修， 最后用一轮悬停甩枪与一轮动态追踪复核。多次测试的轮次会累加到同一条曲线上，越测越准。单次约 2 分半。": "are pooled into a least-squares fit, the peak is refined with one more round, and the result is cross-checked with a flick and a tracking round. Rounds accumulate across sessions, so it keeps improving. About 2.5 minutes per run.",
+"开始智能测试": "Run smart test",
+"热身": "Warm-up",
+"8 个目标 · 不计分": "8 targets · not scored",
+"第 1 轮": "Round 1",
+"第 2 轮": "Round 2",
+"第 3 轮": "Round 3",
+"0.80× 档": "0.80× tier",
+"1.00× 档": "1.00× tier",
+"1.25× 档": "1.25× tier",
+"汇总拟合": "Pooled fit",
+"含历史轮次": "includes past rounds",
+"精修轮": "Refine",
+"峰值附近补测": "extra round near the peak",
+"甩枪复核": "Flick check",
+"大角度速度检查": "large-angle speed",
+"追踪复核": "Tracking check",
+"跟枪稳定性检查": "tracking stability",
+"待运行": "Pending",
+"专项校准与试枪": "Calibration & free play",
+"辅助模块：转身物理约束、自由试枪、开镜倍率换算。都不是必做项，但能让最终数值更贴合你的桌面。": "Optional extras: turn constraint, free practice, and scoped-multiplier migration. Not required, but they make the number fit your desk better.",
+"180° 转身校准": "180° Turn Check",
+"目标出现在侧面 128°–175°，检验当前灵敏度能不能一次转到位、实际要扫多少厘米。": "Targets appear 128°–175° to the side. Checks whether you can turn there in one swipe, and how many centimetres it takes.",
+"试枪房": "Free Range",
+"用最终灵敏度无限练枪，可在画面里 ±15% 微调并直接复制，找到“就是它”的手感。": "Practice endlessly with the final sensitivity. Fine-tune ±15%, copy it, and find the one that feels right.",
+"无限目标": "Endless",
+"可微调": "Tunable",
+"随时退出": "Esc to exit",
+"桌面前置检查": "Desktop pre-check",
+"Windows 指针加速、浏览器缩放、鼠标锁定都会影响测量。先确认这三项再测。": "Windows pointer acceleration, browser zoom and pointer lock all affect the measurement. Confirm these three first.",
+"查看设置指引": "View setup guide",
+"测量前的桌面检查": "Desktop check before measuring",
+"关闭 Windows 指针加速": "Turn off Windows pointer acceleration",
+"浏览器缩放 100%": "Browser zoom at 100%",
+"用原始输入": "Use raw input",
+"确认 DPI": "Confirm DPI",
+"16:9 画面": "16:9 aspect",
+"一次测完": "One sitting",
+"游戏内路径：设置 → 常规 → 鼠标 → 灵敏度：瞄准。输入框支持三位小数，直接键入即可。": "In-game: Settings → General → Mouse → Sensitivity: Aim. The field accepts three decimals — just type it.",
+"本地计算，不联网、不上传成绩": "Computed locally. No network, no uploads.",
+"换算依据：VALORANT 官方 yaw = 0.07° / 计数，横向 FOV 103°，灵敏度可输入 0.1–10.0。": "Based on VALORANT's official yaw of 0.07° per count, 103° horizontal FOV, sensitivity range 0.1–10.0.",
+"非官方工具，与 Riot Games 无关联。VALORANT、无畏契约及相关名称归其权利人所有。": "Unofficial tool, not affiliated with Riot Games. VALORANT and related names belong to their respective owners.",
+"Aimlabs 风格的大范围甩枪。目标会出现在你视野周围 9°–29° 的随机方向，准星碰到就命中。": "Aimlabs-style wide flicks. Targets appear 9°–29° away in a random direction; touching one hits it.",
+"准星固定在画面正中，移动鼠标转动视角": "The crosshair is fixed at the centre — move the mouse to turn",
+"把准星移到红圈上即自动命中，不需要点击": "Put the crosshair on the red circle to hit it. No clicking",
+"共 12 个目标，每个限时 5 秒，超时算失误": "12 targets, 5 seconds each, a timeout counts as a miss",
+"小目标快速点选。灵敏度过高会抖、过低会跟不上，是拟合曲线的核心依据。": "Fast taps on small targets. Too fast and you jitter, too slow and you fall behind — this drives the fit.",
+"目标更小（约 1.7° 半径），出现距离 3°–10°": "Smaller targets (≈1.7° radius), 3°–10° away",
+"每个目标限时 1.8 秒，超时算失误，立刻换下一个": "1.8 seconds per target; a timeout counts as a miss and moves on",
+"共 16 个目标，尽量又快又稳": "16 targets — be fast and steady",
+"移动目标持续覆盖。检验跟枪时灵敏度是否稳定、能不能跟上横向位移。": "Keep a moving target covered. Checks whether your sens is stable while tracking and keeps up with strafes.",
+"目标会在视野内做连续左右 / 上下的移动": "The target moves continuously left/right and up/down",
+"尽量让准星一直压在它身上，不需要点击": "Keep the crosshair on it. No clicking",
+"持续 12 秒，结束后统计覆盖率与平均偏差": "12 seconds, then on-target % and mean error are reported",
+"目标出现在侧面 128°–175°，检验当前灵敏度能不能一次转到位、实际要扫多少厘米。": "Targets appear 128°–175° to the side. Checks whether one swipe gets there, and how many centimetres it takes.",
+"目标会出现在身后或侧后方，跟丢时看屏幕边缘的指示箭头": "Targets appear behind or to the rear — follow the edge arrow if you lose them",
+"准星碰到即命中，共 4 个目标": "Touching hits. 4 targets total",
+"每个限时 6 秒；转不过来说明灵敏度偏慢": "6 seconds each; failing to turn means your sens is too slow",
+"用当前灵敏度无限练枪。按 - / = 实时微调 ±15%，找最舒服的那一档。": "Endless practice at your current sensitivity. Press - / = to fine-tune ±15% and find the one that feels right.",
+"目标无限刷新，准星碰到即命中": "Endless targets — touch to hit",
+"按 - 减速、= 加速（每次 1%）": "Press - to slow down, = to speed up (1% steps)",
+"按 Esc 结束并返回结果": "Press Esc to finish and return",
+"准星碰到目标即命中 · 不需要点击": "Touch the target with the crosshair · no clicking",
+"小目标 · 限时 1.8 秒 · 碰到即命中": "Small targets · 1.8s limit · touch to hit",
+"保持准星压在移动目标上 · 不需要点击": "Keep the crosshair on the moving target · no clicking",
+"大角度转身 · 留意边缘箭头指示": "Big turns · watch the edge arrow",
+"无限目标 · - / = 微调 · Esc 结束": "Endless · - / = tune · Esc to exit",
+"移动鼠标让准星碰到目标 · 无需点击": "Move the mouse so the crosshair touches the target · no clicking",
+"准备瞄准": "Get ready",
+"继续": "Resume",
+"锁定鼠标中…": "Locking mouse…",
+"开始测试": "Start test",
+"返回": "Back",
+"继续测试": "Resume test",
+"结束本次测试": "End test",
+"已暂停": "Paused",
+"鼠标锁定已解除，计时同步冻结。点击继续会重新锁定鼠标，并从 2 秒倒计时重新开始。": "Pointer lock is released and the timer is frozen. Resume re-locks the mouse and restarts with a 2-second countdown.",
+"完成": "Done",
+"再测一轮": "Run again",
+"再进一次": "Play again",
+"命中": "Hits",
+"用时": "Time",
+"覆盖": "On target",
+"剩余": "Left",
+"浏览器拒绝了鼠标锁定。请用 Chrome / Edge 打开本文件，并点击页面空白处后再试。": "The browser refused pointer lock. Open this file in Chrome / Edge and click the page once before starting.",
+"鼠标锁定失败。请确认：① 使用 Chrome / Edge 桌面版；② 本页在顶层窗口而不是 iframe 小窗里；③ 点击页面后再开始。": "Pointer lock failed. Check: ① desktop Chrome / Edge; ② this page is a top-level window, not an iframe; ③ click the page once before starting.",
+"已复制": "Copied",
+"复制失败，请手动选中复制": "Copy failed — please select and copy manually",
+"已清空": "Cleared",
+"已按现有数据重算": "Recalculated from existing data",
+"已中止，可重新开始": "Stopped. You can start again.",
+"完整报告已复制": "Full report copied",
+"已复制开镜倍率": "Scoped multiplier copied",
+"还没有测试数据": "No test data yet",
+"去测试": "Go test",
+"看结果": "View results",
+"去跑一次智能测试": "Run a smart test",
+"当前推荐": "Current pick",
+"尚未测试": "Not tested yet",
+"最近一轮": "Latest",
+"起点": "Start",
+"第 1 轮 · ": "Round 1 · ",
+"热身 · 微目标": "Warm-up · micro",
+"WARM UP": "WARM UP",
+"你的专属游戏数值": "Your in-game numbers",
+"输出格式为三位小数，直接对应《无畏契约》→ 设置 → 常规 → 鼠标 → 灵敏度：瞄准。": "Three decimals, entered at VALORANT → Settings → General → Mouse → Sensitivity: Aim.",
+"完成「一键智能生成」，或至少完成一次微目标精准测试，这里会生成可直接填入游戏的灵敏度数值与完整推导过程。": "Run one-click generation, or at least one Micro Precision test, and this section outputs a ready-to-type sensitivity with the full derivation.",
+"复制数值": "Copy value",
+"复制完整报告": "Copy full report",
+"90° 微调行程": "90° micro-adjust",
+"测试可信度": "Confidence",
+"已完成测试": "Tests done",
+"一次完整转身的物理距离": "Physical distance for a full turn",
+"一颗头宽度的修正量": "Roughly one head-width of correction",
+"至少 3 轮才有稳定结论": "At least 3 rounds for a stable result",
+"数据充足，结论可靠": "Enough data — reliable",
+"累计 ": "Total ",
+" 轮，结论稳定": " rounds — stable",
+" 轮，建议再测一轮": " rounds — run one more",
+"得分曲线 · 最优点": "Score curve · optimum",
+"推荐区间": "Recommended range",
+"累计有效轮次": "Valid rounds",
+"历次一致性": "Consistency",
+"首轮": "First run",
+"波动 ": "spread ",
+"这个数值是怎么来的": "How this number was derived",
+"每一步都可以追溯。如果你不同意某条调整，可以在“三档取值”里直接选相邻档位。": "Every step is traceable. If you disagree with an adjustment, pick a neighbouring tier below.",
+"三档取值": "Three tiers",
+"稳定型 · 精准优先": "Stable · precision first",
+"平衡型 · 首选": "Balanced · recommended",
+"速度型 · 转点优先": "Speed · movement first",
+"更慢，微调更稳，适合架点与狙击": "Slower, steadier micro-adjust — good for holding and sniping",
+"测试得出的最优点，速度与稳定兼顾": "The measured optimum — speed and stability together",
+"更快，转身与切枪更灵活，需要适应": "Faster, more agile for turns — takes getting used to",
+"复制": "Copy",
+"填入游戏": "Enter it in-game",
+"打开《无畏契约》→": "Open VALORANT →",
+"把数值改成": "Set it to",
+"鼠标 DPI 必须保持": "Mouse DPI must stay",
+"开镜 / 狙击倍率先保持": "Leave the ADS / scoped multipliers at",
+"进训练场打 3 轮困难机器人，只做": "Play 3 rounds against Hard bots, then adjust only in",
+"级别的微调；不要一局一改，至少适应 2–3 天再评价。": "steps. Don't change it every match — give it 2–3 days.",
+"。可以直接用键盘输入，游戏接受三位小数。": ". You can type it directly; the game accepts three decimals.",
+"不变；若你在驱动里改了 DPI，请用本页重新换算一次。": ". If you change DPI in the driver, recalculate here first.",
+"；如果你原来调过，用下方换算器把旧倍率一起迁移过来。": ". If you tuned them before, migrate the old multipliers with the converter below.",
+"；若你在驱动里改了 DPI，请用本页重新换算一次。": ". If you changed DPI in the driver, recalculate here.",
+"旧灵敏度": "Old sensitivity",
+"旧开镜 / 狙击倍率": "Old ADS / scoped multiplier",
+"新倍率": "New multiplier",
+"原理：开镜倍率是叠加在“灵敏度：瞄准”之上的。换了主灵敏度后，按": "The ADS multiplier stacks on top of Sensitivity: Aim. After changing your main sensitivity, recompute with",
+" 重算，开镜手感才不会跟着变。": " so your scoped feel doesn't drift.",
+"新倍率 = 旧灵敏度 × 旧倍率 ÷ 新灵敏度": "new = old sens × old multiplier ÷ new sens",
+"换 DPI 换算": "DPI conversion",
+"→ 灵敏度": "→ sensitivity",
+"保持同一个 cm/360°（": "Same cm/360° (",
+" cm），只改鼠标 DPI 时用这一行换算。": " cm). Use this row when you only change DPI.",
+"测试明细": "Test log",
+"轮次": "Round",
+"测试": "Test",
+"关键指标": "Key metrics",
+"得分": "Score",
+"状态": "Status",
+"好": "Good",
+"一般": "Fair",
+"偏低": "Low",
+"稳定": "Stable",
+"偏抖": "Jittery",
+"得分 = 每秒清理目标数 × 命中率 × 路径效率修正。同一套目标序列在不同灵敏度下重复使用，保证可比性。": "Score = targets per second × hit rate × path-efficiency correction. The same target sequence is reused at every sensitivity so rounds stay comparable.",
+"用现有数据重算": "Recalculate",
+"清空所有数据": "Clear all data",
+"还没有微目标数据，先用甩枪轮次": "No micro data yet — using the flick round",
+"有 2 个灵敏度档的数据，取较高分的": "Two tiers recorded — taking the higher score",
+"只有 1 个灵敏度档的数据：": "Only one tier recorded:",
+"目标无限刷新，准星碰到即命中": "Endless targets — touch to hit",
+"当前推荐": "Current pick",
+" · 可实时微调": " · live tuning",
+"需要先有推荐数值": "Run a test first",
+"开始 · 试枪房": "Start · Free range",
+"开始 · 悬停甩枪": "Start · Hover flick",
+"开始 · 微目标精准": "Start · Micro precision",
+"开始 · 动态追踪": "Start · Tracking",
+"开始 · 转身校准": "Start · Turn check",
+"先完成测试": "Run a test first",
+"再测一轮": "Test again",
+"测试画面按《无畏契约》原生 103° 横向 FOV 与 0.07° / 计数 的比例绘制，测出来的手感与游戏内一致。": "Drawn with VALORANT's native 103° horizontal FOV and 0.07° per count, so the feel matches the game.",
+"所有数值都在本地计算，不会上传。请按鼠标驱动里真实使用的参数填写。": "Everything is computed locally. Use the values your mouse driver actually runs.",
+"横轴为对数刻度灵敏度，纵轴为该档位的综合得分（中位命中用时 × 命中率 × 路径效率）。红点是实测档位，曲线为最小二乘拟合，绿色带是“得分不低于峰值 90%”的区间——带内任意数值的差别都在测量误差之内，不必纠结小数点。多次测试的轮次会累计到同一条曲线上。": "X axis is sensitivity on a log scale; Y is the composite score (median hit time × hit rate × path efficiency). Dots are measured tiers, the curve is a least-squares fit, and the green band is where the score stays within 90% of the peak — differences inside it are within measurement noise, so don't agonise over decimals. Rounds accumulate onto the same curve.",
+"完成「一键智能生成」后，这里会显示各灵敏度档的得分与拟合曲线；现在数据量还少，结论只作参考。再测一次会把新轮次自动并入。": "After a one-click run this shows the per-tier scores and the fitted curve. Right now there is little data, so treat it as a hint — another run folds new rounds in automatically."
+};
+
+var EN_EXTRA = {
+"找到只属于你的": "Find your own ",
+"全能混合位": "Flex",
+"进入测试后会锁定鼠标并出现准星，画面为 16:9 游戏比例；倒计时用高精度时钟计算，帧率波动也不会卡住。 按": "It locks the mouse and shows a crosshair in a 16:9 game frame. The countdown uses a high-precision clock, so frame drops can't stall it. Press",
+"汇总做最小二乘拟合、取峰值并在附近补一轮精修， 最后用一轮悬停甩枪与一轮动态追踪复核。多次测试的轮次会累加到同一条曲线上，越测越准。单次约 2 分半。": "are pooled into a least-squares fit, the peak is refined with one extra round, then cross-checked with a flick and a tracking round. Rounds accumulate across sessions, so it keeps improving. About 2.5 minutes per run.",
+"推荐区间 —": "Recommended range —",
+"· 每 360° 需": "· per 360°:",
+"· 本地计算，不联网、不上传成绩。": "· Computed locally. No network, no uploads.",
+"设置": "Settings",
+"常规": "General",
+"鼠标": "Mouse",
+"，找到“": ", find ",
+"”。": ".",
+"灵敏度：瞄准": "Sensitivity: Aim",
+"灵敏度": "Sensitivity",
+"重算，开镜手感才不会跟着变。": "so your scoped feel doesn't drift.",
+"保持同一个 cm/360°，只改鼠标 DPI 时用这一行换算。": "Same cm/360° — use this row when you only change DPI.",
+"进入后浏览器会锁定鼠标指针，请勿按": "The browser locks the pointer once you start — don't press",
+"（会暂停）。建议 Chrome / Edge，浏览器缩放 100%。": "(it pauses). Chrome / Edge recommended, browser zoom 100%.",
+"关闭 Windows 指针加速": "Turn off Windows pointer acceleration",
+"：设置 → 蓝牙和其他设备 → 鼠标 → 其他鼠标设置 → 指针选项 → 取消“提高指针精确度”。": ": Settings → Bluetooth & devices → Mouse → Additional mouse settings → Pointer options → uncheck \"Enhance pointer precision\".",
+"· Windows「提高指针精确度」建议关闭": "· Turn off Windows \"Enhance pointer precision\"",
+"· 浏览器缩放保持 100%": "· Keep browser zoom at 100%",
+"· 鼠标锁定：点击测试后自动请求": "· Pointer lock: requested automatically when you start",
+"。缩放会改变画面像素与鼠标位移的对应关系。": ". Zoom changes how screen pixels map to mouse movement.",
+"：本页会请求": ": this page requests",
+"（绕过系统加速）；若浏览器不支持会退回普通锁定，精度会略降。": " (bypassing OS acceleration). If unsupported it falls back to normal lock with slightly lower precision.",
+"：在鼠标驱动里读取，或按住 DPI 键切到固定档位，不要用“DPI 切换键”边玩边换。": ": read it in your mouse driver, or hold the DPI button to a fixed step. Don't switch DPI mid-game.",
+"：测试区强制 16:9 并锁定 103° 横向 FOV，与游戏默认一致；带鱼屏 / 4:3 拉伸会让手感略有差异。": ": the test area is forced to 16:9 with a locked 103° horizontal FOV, matching the game default. Ultrawide or 4:3 stretch will differ slightly.",
+"：中途不要改 DPI、不要改分辨率，否则前后轮次不可比。": ": don't change DPI or resolution mid-way, or the rounds stop being comparable.",
+"鼠标 DPI 必须保持": "Mouse DPI must stay",
+"级别的微调；不要一局一改，至少适应 2–3 天再评价。": "steps. Don't change it every match — give it 2–3 days.",
+"打开《无畏契约》→": "Open VALORANT →",
+"把数值改成": "Set it to",
+"开镜 / 狙击倍率先保持": "Leave the ADS / scoped multipliers at",
+"进训练场打 3 轮困难机器人，只做": "Play 3 rounds against Hard bots, then adjust only in",
+"不变；若你在驱动里改了 DPI，请用本页重新换算一次。": ". If you change DPI in the driver, recalculate here.",
+"；如果你原来调过，用下方换算器把旧倍率一起迁移过来。": ". If you tuned them before, migrate the old multipliers below.",
+"。可以直接用键盘输入，游戏接受三位小数。": ". You can type it directly; the game accepts three decimals.",
+"原理：开镜倍率是叠加在“灵敏度：瞄准”之上的。换了主灵敏度后，按": "The ADS multiplier stacks on top of Sensitivity: Aim. After changing your main sensitivity, recompute with",
+" 重算，开镜手感才不会跟着变。": " so your scoped feel doesn't drift.",
+"当前推荐": "Current pick",
+" · 可实时微调": " · live tuning",
+"需要先有推荐数值": "Run a test first"
+};
+for (var __k in EN_EXTRA) { EN_TXT[__k] = EN_EXTRA[__k]; }
+
+(function () { var __n = {}; for (var __k in EN_TXT) __n[__k.replace(/^\s+|\s+$/g, '')] = EN_TXT[__k]; EN_TXT = __n; })();
+var EN_MORE = {
+"起点：按档案推导的基准灵敏度": "Start: baseline",
+"，实测最高分": ", best measured",
+"，收缩后取": ", shrunk to",
+"，来自位置 / 握姿 / 垫宽。": ", from role / grip / pad width.",
+"，来自你填写的现有手感。": ", from the sens you entered.",
+"轮，建议再测一轮": " rounds — run one more",
+"轮，结论稳定": " rounds — stable",
+"· 可实时微调": " · live tuning"
+};
+for (var __m in EN_MORE) { EN_TXT[__m] = EN_MORE[__m]; }
+var EN_RULES2 = [
+  [ /^（([\d.]+) cm\/360°），来自位置 \/ 握姿 \/ 垫宽。$/, function (m) { return '(' + m[1] + ' cm/360°), from role / grip / pad width.'; } ],
+  [ /^（([\d.]+) cm\/360°），来自你填写的现有手感。$/, function (m) { return '(' + m[1] + ' cm/360°), from the sens you entered.'; } ],
+  [ /^(\d+) 轮微目标测试（覆盖 (\d+) 个灵敏度档）拟合二次曲线：顶点$/, function (m) { return m[1] + ' micro rounds across ' + m[2] + ' tiers, fitted with a quadratic: vertex'; } ],
+  [ /^（R² ([\d.]+)）。$/, function (m) { return '(R² ' + m[1] + ').'; } ],
+  [ /^保持同一个 cm\/360°（([\d.]+) cm），只改鼠标 DPI 时用这一行换算。$/, function (m) { return 'Same cm/360° (' + m[1] + ' cm). Use this row when you only change DPI.'; } ],
+  [ /^累计 (\d+) 轮，建议再测一轮$/, function (m) { return m[1] + ' rounds — run one more'; } ],
+  [ /^累计 (\d+) 轮，结论稳定$/, function (m) { return m[1] + ' rounds — stable'; } ],
+  [ /^起点：按档案推导的基准灵敏度$/, function () { return 'Start: baseline'; } ],
+  [ /^当前推荐 ([\d.]+) · 可实时微调$/, function (m) { return 'Current pick ' + m[1] + ' · live tuning'; } ]
+];
+
+
+var EN_RULES = [
+
+  /* 动态句子规则：按渲染后的完整句子匹配 */
+  [ /^按 (\d+) DPI · (.+) · (.+) 推导(，受鼠标垫宽度限制已收紧)?。这只是起点。$/,
+    function (m) { return 'From ' + m[1] + ' DPI · ' + trText(m[2]) + ' · ' + trText(m[3]) + (m[4] ? ', tightened by pad width' : '') + '. Just a starting point.'; } ],
+  [ /^已把你填写的 ([\d.]+) 作为先验，测试只会在它上下 20% 内做修正。$/,
+    function (m) { return 'Using your ' + m[1] + ' as the prior — tests only adjust within ±20% of it.'; } ],
+  [ /^起点：按档案推导的基准灵敏度 ([\d.]+)（([\d.]+) cm\/360°），来自你填写的现有手感。$/,
+    function (m) { return 'Start: baseline ' + m[1] + ' (' + m[2] + ' cm/360°), taken from the sens you entered.'; } ],
+  [ /^起点：按档案推导的基准灵敏度 ([\d.]+)（([\d.]+) cm\/360°），来自位置 \/ 握姿 \/ 垫宽。$/,
+    function (m) { return 'Start: baseline ' + m[1] + ' (' + m[2] + ' cm/360°), derived from role / grip / pad width.'; } ],
+  [ /^(\d+) 轮微目标测试（覆盖 (\d+) 个灵敏度档）拟合二次曲线：顶点 ([\d.]+)，实测最高分 ([\d.]+)，收缩后取 ([\d.]+)（R² ([\d.]+)）。$/,
+    function (m) { return m[1] + ' micro rounds across ' + m[2] + ' sensitivity tiers, fitted with a quadratic: vertex ' + m[3] + ', best measured ' + m[4] + ', shrunk to ' + m[5] + ' (R² ' + m[6] + ').'; } ],
+  [ /^拟合峰值落在实测范围之外，改取实测最高分 ([\d.]+)（得分 ([\d.]+)）。$/,
+    function (m) { return 'The fitted peak fell outside the measured range — using the best measured tier ' + m[1] + ' (score ' + m[2] + ').'; } ],
+  [ /^得分曲线没有形成向下的峰值，取实测最高分的 ([\d.]+)。$/,
+    function (m) { return 'The score curve has no clear peak — using the best measured tier ' + m[1] + '.'; } ],
+  [ /^有 2 个灵敏度档的数据，取较高分的 ([\d.]+)；再补一轮就能做曲线拟合。$/,
+    function (m) { return 'Two tiers recorded — taking the higher score ' + m[1] + '. One more round enables a curve fit.'; } ],
+  [ /^只有 1 个灵敏度档的数据：([\d.]+)（(\d+) 轮，命中率 (\d+)%）。$/,
+    function (m) { return 'Only one tier so far: ' + m[1] + ' (' + m[2] + ' rounds, ' + m[3] + '% hit rate).'; } ],
+  [ /^命中率偏低，先下调 8% 到 ([\d.]+) 再验证。$/,
+    function (m) { return 'Hit rate is low — drop 8% to ' + m[1] + ' and verify.'; } ],
+  [ /^又快又准，上调 5% 到 ([\d.]+) 试试更灵活的手感。$/,
+    function (m) { return 'Fast and accurate — try 5% higher at ' + m[1] + '.'; } ],
+  [ /^还没有微目标数据，先用甩枪轮次 ([\d.]+)（命中率 (\d+)%）作参考。$/,
+    function (m) { return 'No micro data yet — using the flick round at ' + m[1] + ' (' + m[2] + '% hit rate).'; } ],
+  [ /^甩枪命中率只有 (\d+)%，大角度定位失控 → 下调 4%（([\d.]+) → ([\d.]+)）。$/,
+    function (m) { return 'Flick hit rate only ' + m[1] + '% — losing large-angle control → down 4% (' + m[2] + ' → ' + m[3] + ').'; } ],
+  [ /^甩枪复核：命中率 (\d+)%、路径效率 (\d+)%，未触发调整。$/,
+    function (m) { return 'Flick check: ' + m[1] + '% hit rate, ' + m[2] + '% path efficiency — no adjustment.'; } ],
+  [ /^追踪覆盖率仅 (\d+)%，跟枪严重抖动 → 下调 3%（([\d.]+) → ([\d.]+)）。$/,
+    function (m) { return 'Tracking coverage only ' + m[1] + '% — jittery → down 3% (' + m[2] + ' → ' + m[3] + ').'; } ],
+  [ /^追踪复核：覆盖率 (\d+)%、平均偏差 ([\d.]+)°，未触发调整。$/,
+    function (m) { return 'Tracking check: ' + m[1] + '% coverage, ' + m[2] + '° mean error — no adjustment.'; } ],
+  [ /^转身测试只完成 (\d+)\/(\d+) 次 180° 回正 → 上调 5%（([\d.]+) → ([\d.]+)）。$/,
+    function (m) { return 'Only ' + m[1] + '/' + m[2] + ' full 180° turns completed → up 5% (' + m[3] + ' → ' + m[4] + ').'; } ],
+  [ /^转身复核：180° 平均 (\d+) ms 到位，垫面行程够用。$/,
+    function (m) { return 'Turn check: 180° in ' + m[1] + ' ms on average — pad travel is fine.'; } ],
+  [ /^受 (\d+) cm 鼠标垫宽度限制 → 收紧到 ([\d.]+) cm\/360°（([\d.]+) → ([\d.]+)）。$/,
+    function (m) { return 'Limited by a ' + m[1] + ' cm pad → tightened to ' + m[2] + ' cm/360° (' + m[3] + ' → ' + m[4] + ').'; } ],
+  [ /^受 ([\d.]+) cm 鼠标垫宽度限制，180° 回正将超过垫面 → 收紧到 ([\d.]+) cm\/360°（([\d.]+) → ([\d.]+)）。$/,
+    function (m) { return 'A ' + m[1] + ' cm pad cannot fit a 180° turn → tightened to ' + m[2] + ' cm/360° (' + m[3] + ' → ' + m[4] + ').'; } ],
+  [ /^理论值 ([\d.]+) 超出游戏可输入范围 0\.1–10\.0，已收到边界。$/,
+    function (m) { return 'Theoretical ' + m[1] + ' is outside the in-game range 0.1–10.0 — clamped to the boundary.'; } ],
+  [ /^历次结果 (.+)，波动 (\d+)%，一致性好。$/,
+    function (m) { return 'Past runs ' + m[1] + ', spread ' + m[2] + '% — consistent.'; } ],
+  [ /^历次结果 (.+)，波动 (\d+)%，属于正常测量噪声。$/,
+    function (m) { return 'Past runs ' + m[1] + ', spread ' + m[2] + '% — normal measurement noise.'; } ],
+  [ /^历次结果 (.+)，波动 (\d+)%；本次已把全部轮次放在一起拟合，想更稳可以再做一轮。$/,
+    function (m) { return 'Past runs ' + m[1] + ', spread ' + m[2] + '%. All rounds are pooled in this fit — another run makes it steadier.'; } ],
+  [ /^推荐区间 ([\d.]+) – ([\d.]+) · 区间内差别很小$/,
+    function (m) { return 'Recommended range ' + m[1] + ' – ' + m[2] + ' · differences inside are tiny'; } ],
+  [ /^命中 (\d+)\/(\d+) · 效率 (\d+)% · (\d+)ms$/,
+    function (m) { return 'Hits ' + m[1] + '/' + m[2] + ' · eff. ' + m[3] + '% · ' + m[4] + 'ms'; } ],
+  [ /^覆盖 (\d+)% · 偏差 ([\d.]+)°$/,
+    function (m) { return 'On target ' + m[1] + '% · err. ' + m[2] + '°'; } ],
+  [ /^· 命中率 (\d+)% · 效率 (\d+)%$/,
+    function (m) { return '· hit rate ' + m[1] + '% · eff. ' + m[2] + '%'; } ],
+  [ /^· 命中 (\d+)\/(\d+) · 得分 ([\d.]+)$/,
+    function (m) { return '· hits ' + m[1] + '/' + m[2] + ' · score ' + m[3]; } ],
+  [ /^· 覆盖率 (\d+)% · 偏差 ([\d.]+)°$/,
+    function (m) { return '· on target ' + m[1] + '% · err. ' + m[2] + '°'; } ],
+  [ /^· 平均 (\d+)ms · 命中 (\d+)\/(\d+)$/,
+    function (m) { return '· avg ' + m[1] + 'ms · hits ' + m[2] + '/' + m[3]; } ],
+  [ /^生成完成：([\d.]+)（区间 ([\d.]+)–([\d.]+)）$/,
+    function (m) { return 'Done: ' + m[1] + ' (range ' + m[2] + '–' + m[3] + ')'; } ],
+  [ /^试枪灵敏度 ([\d.]+)（([+-]\d+)%）$/,
+    function (m) { return 'Range sensitivity ' + m[1] + ' (' + m[2] + '%)'; } ],
+  [ /^试枪微调到 ([\d.]+)（([+-]\d+)%）$/,
+    function (m) { return 'Tuned to ' + m[1] + ' (' + m[2] + '%)'; } ],
+  [ /^已复制灵敏度 ([\d.]+)$/,
+    function (m) { return 'Sensitivity ' + m[1] + ' copied'; } ],
+  [ /^第 (\d+) 轮 · ([\d.]+)$/,
+    function (m) { return 'Round ' + m[1] + ' · ' + m[2]; } ],
+  [ /^([+-]?\d+)% 档$/,
+    function (m) { return m[1] + '% tier'; } ],
+  [ /^峰值 ([\d.]+)$/,
+    function (m) { return 'Peak ' + m[1]; } ],
+  [ /^最优 ([\d.]+)$/,
+    function (m) { return 'Best ' + m[1]; } ],
+  [ /^累计 (\d+) 轮 \/ (\d+) 档$/,
+    function (m) { return m[1] + ' rounds / ' + m[2] + ' tiers'; } ],
+  [ /^波动 (\d+)%$/,
+    function (m) { return 'spread ' + m[1] + '%'; } ],
+  [ /^(\d+) 轮 \/ (\d+) 档$/,
+    function (m) { return m[1] + ' rounds / ' + m[2] + ' tiers'; } ],
+  [ /^(\d+) 轮$/,
+    function (m) { return m[1] + ' rounds'; } ],
+  [ /^失误 (\d+) · (.+)$/,
+    function (m) { return 'Misses ' + m[1] + ' · ' + trText(m[2]); } ],
+  [ /^微调 ([+-]\d+)% · - \/ = 调整 · Esc 结束$/,
+    function (m) { return 'Tuning ' + m[1] + '% · - / = to adjust · Esc to exit'; } ],
+
+];
+
+
+
+EN_RULES = EN_RULES.concat(EN_RULES2);
+function trText(s) {
+  if (LANG === 'zh' || !s) return s;
+  var t = s.replace(/\s+/g, ' ').trim();
+  if (!t || !/[\u4e00-\u9fa5]/.test(t)) return s;
+  var hit = EN_TXT[t];
+  if (hit === undefined) {
+    for (var i = 0; i < EN_RULES.length; i++) {
+      if (EN_RULES[i][0].test(t)) { hit = EN_RULES[i][1](t.match(EN_RULES[i][0])); break; }
+    }
+  }
+  if (hit === undefined) return s;
+  var lead = /^\s/.test(s) ? ' ' : '';
+  var trail = /\s$/.test(s) ? ' ' : '';
+  return lead + hit + trail;
+}
+
+var ZH_ORIG = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
+
+function applyI18n(root) {
+  root = root || document.body;
+  if (!root) return;
+  var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  var n, list = [];
+  while ((n = w.nextNode())) list.push(n);
+  for (var i = 0; i < list.length; i++) {
+    n = list[i];
+    var p = n.parentNode;
+    if (p && /^(SCRIPT|STYLE|TEXTAREA|OPTION)$/.test(p.nodeName)) continue;
+    if (LANG === 'zh') {
+      if (ZH_ORIG && ZH_ORIG.has(n)) n.nodeValue = ZH_ORIG.get(n);
+      continue;
+    }
+    var v = n.nodeValue;
+    if (!v || !/[\u4e00-\u9fa5]/.test(v)) continue;
+    if (ZH_ORIG && ZH_ORIG.has(n)) n.nodeValue = ZH_ORIG.get(n);
+    else if (ZH_ORIG) ZH_ORIG.set(n, v);
+    n.nodeValue = trText(n.nodeValue);
+  }
+  var attrs = root.querySelectorAll ? root.querySelectorAll('[placeholder],[title]') : [];
+  for (var k = 0; k < attrs.length; k++) {
+    (function (el) {
+      ['placeholder', 'title'].forEach(function (a) {
+        var val = el.getAttribute(a);
+        if (!val) return;
+        var key = 'zh_' + a;
+        if (LANG === 'zh') { if (el.dataset[key]) el.setAttribute(a, el.dataset[key]); return; }
+        if (!el.dataset[key]) el.dataset[key] = val;
+        el.setAttribute(a, trText(el.dataset[key]));
+      });
+    })(attrs[k]);
+  }
+}
+
+function setLang(v) {
+  LANG = (v === 'en') ? 'en' : 'zh';
+  try { localStorage.setItem(LANG_KEY, LANG); } catch (e) { }
+  document.documentElement.lang = (LANG === 'zh') ? 'zh-CN' : 'en';
+  document.title = (LANG === 'zh') ? '无畏契约灵敏度生成器 · VAL SENS LAB' : 'VALORANT Sensitivity Generator · VAL SENS LAB';
+  var sel = document.getElementById('langSel');
+  if (sel) sel.value = LANG;
+  applyI18n(document.body);
+  try { renderResults(); renderTestCards(); } catch (e) { }
+  applyI18n(document.body);
+}
 
 /* ---------------- 基础工具 ---------------- */
 var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -2228,9 +2758,9 @@ function analyze() {
   if (flick) {
     if (flick.acc < 0.75) {
       var b1 = sens; sens *= 0.96;
-      log.push('甩枪命中率只有 ' + pct(flick.acc) + '%，大角度定位失控 → 下调 4%（' + f3(b1) + ' → ' + f3(sens) + '）。');
+      log.push('甩枪命中率只有 ' + pct(flick.acc) + '，大角度定位失控 → 下调 4%（' + f3(b1) + ' → ' + f3(sens) + '）。');
     } else {
-      log.push('甩枪复核：命中率 ' + pct(flick.acc) + '%、路径效率 ' + pct(flick.eff) + '%，未触发调整。');
+      log.push('甩枪复核：命中率 ' + pct(flick.acc) + '、路径效率 ' + pct(flick.eff) + '，未触发调整。');
     }
   }
   var trArr = validRuns('track');
@@ -2238,9 +2768,9 @@ function analyze() {
     var tr = trArr[trArr.length - 1];
     if (tr.onPct < 0.35) {
       var b2 = sens; sens *= 0.97;
-      log.push('追踪覆盖率仅 ' + pct(tr.onPct) + '%，跟枪严重抖动 → 下调 3%（' + f3(b2) + ' → ' + f3(sens) + '）。');
+      log.push('追踪覆盖率仅 ' + pct(tr.onPct) + '，跟枪严重抖动 → 下调 3%（' + f3(b2) + ' → ' + f3(sens) + '）。');
     } else {
-      log.push('追踪复核：覆盖率 ' + pct(tr.onPct) + '%、平均偏差 ' + f2(tr.meanErr) + '°，未触发调整。');
+      log.push('追踪复核：覆盖率 ' + pct(tr.onPct) + '、平均偏差 ' + f2(tr.meanErr) + '°，未触发调整。');
     }
   }
   var tuArr = validRuns('turn');
@@ -2887,7 +3417,26 @@ function init() {
   updateFreeButton();
   updateAds();
   updateConv();
+  try { var lv = localStorage.getItem(LANG_KEY); if (lv === 'en') setLang('en'); } catch (e) { }
+  var langSel = $('#langSel');
+  if (langSel) {
+    langSel.value = LANG;
+    langSel.addEventListener('change', function () { setLang(langSel.value); });
+  }
+  if (LANG === 'en') applyI18n(document.body);
 }
+
+/* ---- 语言切换：渲染后自动翻译 ---- */
+(function () {
+  var _rr = renderResults;
+  renderResults = function () { _rr.apply(null, arguments); if (LANG !== 'zh') applyI18n(document.body); };
+  var _rt = renderTestCards;
+  renderTestCards = function () { _rt.apply(null, arguments); if (LANG !== 'zh') applyI18n(document.body); };
+  var _si = Stage.showIntro;
+  Stage.showIntro = function () { _si.call(Stage); if (LANG !== 'zh') applyI18n(document.body); };
+  var _sr = Stage.showResultPanel;
+  Stage.showResultPanel = function () { _sr.call(Stage); if (LANG !== 'zh') applyI18n(document.body); };
+})();
 
 init();
 
