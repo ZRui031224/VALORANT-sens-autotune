@@ -1,0 +1,2899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>无畏契约灵敏度生成器 · VAL SENS LAB</title>
+<meta name="description" content="内嵌 Aimlabs 风格瞄准测试的无畏契约个人灵敏度生成器：读取 DPI、握姿、鼠标垫与瞄准习惯，通过悬停甩枪、微目标、追踪测试自动拟合出可直接填入游戏的三位小数灵敏度。">
+<style>
+/* ============ 基础 ============ */
+*{box-sizing:border-box}
+:root{
+  --bg:#080b0f;
+  --bg2:#0b1016;
+  --panel:#101820;
+  --panel2:#0d141a;
+  --line:#202c36;
+  --line2:#2c3b47;
+  --txt:#ece8e1;
+  --dim:#8ea0ae;
+  --dim2:#6a7c8a;
+  --red:#ff4655;
+  --red2:#ff6f7b;
+  --mint:#38e8c0;
+  --amber:#ffc44d;
+  --blue:#5aa9ff;
+  --radius:2px;
+  --font:"Bahnschrift","DIN Alternate","HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--font);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:15px;line-height:1.6;
+  background-image:
+    radial-gradient(1100px 600px at 78% -8%,rgba(255,70,85,.14),transparent 62%),
+    radial-gradient(900px 520px at 8% 4%,rgba(56,232,192,.055),transparent 60%),
+    linear-gradient(180deg,#080b0f 0%,#080b0f 60%,#06090c 100%);
+  background-attachment:fixed;
+}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:.01em;line-height:1.2}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+b,strong{font-weight:700}
+::selection{background:rgba(255,70,85,.35);color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#0a0e13}
+::-webkit-scrollbar-thumb{background:#25323d;border:2px solid #0a0e13}
+::-webkit-scrollbar-thumb:hover{background:#354855}
+
+.wrap{max-width:1220px;margin:0 auto;padding:0 26px}
+.mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ============ 顶栏 ============ */
+.topbar{
+  position:sticky;top:0;z-index:60;
+  backdrop-filter:blur(14px) saturate(140%);
+  background:rgba(8,11,15,.82);
+  border-bottom:1px solid var(--line);
+}
+.topbar-in{max-width:1220px;margin:0 auto;padding:0 26px;height:64px;display:flex;align-items:center;gap:26px}
+.brand{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+.brand-mark{
+  width:32px;height:32px;display:grid;place-items:center;
+  background:var(--red);color:#0a0d10;font-weight:700;font-size:18px;
+  clip-path:polygon(0 0,100% 0,100% 68%,72% 100%,0 100%);
+}
+.brand-txt b{display:block;font-size:13px;letter-spacing:.20em;line-height:1.1}
+.brand-txt span{display:block;font-size:10.5px;color:var(--dim2);letter-spacing:.14em;margin-top:2px}
+.steps{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+.steps a{
+  font-size:12px;letter-spacing:.06em;color:var(--dim);padding:8px 11px;
+  border:1px solid transparent;transition:.18s;white-space:nowrap;display:flex;align-items:center;gap:6px;
+}
+.steps a i{font-style:normal;font-size:10px;color:var(--dim2);letter-spacing:.1em}
+.steps a:hover{color:#fff;border-color:var(--line2);background:rgba(255,255,255,.03)}
+.steps a.on{color:#fff;border-color:rgba(255,70,85,.5);background:rgba(255,70,85,.1)}
+.steps a.on i{color:var(--red)}
+.topstat{display:flex;align-items:center;gap:9px;padding-left:20px;border-left:1px solid var(--line)}
+.topstat span{font-size:10.5px;letter-spacing:.14em;color:var(--dim2)}
+.topstat b{font-size:17px;color:var(--red);letter-spacing:.02em}
+
+/* ============ 按钮 ============ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 20px;border:1px solid var(--line2);background:rgba(255,255,255,.03);
+  color:var(--txt);font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.09em;
+  cursor:pointer;transition:.16s;white-space:nowrap;text-transform:uppercase;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%);
+  position:relative;
+}
+.btn:hover{background:rgba(255,255,255,.08);border-color:#48606f;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn.primary{background:var(--red);border-color:var(--red);color:#0a0d10}
+.btn.primary:hover{background:var(--red2);border-color:var(--red2);box-shadow:0 8px 28px -10px rgba(255,70,85,.9)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:8px 13px;font-size:11.5px;letter-spacing:.08em}
+.btn.big{padding:15px 30px;font-size:15px}
+.btn.mint{background:var(--mint);border-color:var(--mint);color:#04211b}
+.btn.mint:hover{background:#61f5d4;border-color:#61f5d4}
+
+/* ============ Hero ============ */
+.hero{padding:58px 0 30px;position:relative;overflow:hidden}
+.hero::after{
+  content:"";position:absolute;left:0;right:0;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,70,85,.5),transparent);
+}
+.hero-in{max-width:1220px;margin:0 auto;padding:0 26px;display:grid;grid-template-columns:1.35fr .85fr;gap:48px;align-items:center}
+.kicker{font-size:11px;letter-spacing:.34em;color:var(--red);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.kicker::before{content:"";width:26px;height:1px;background:var(--red)}
+.hero h1{font-size:clamp(34px,4.6vw,58px);line-height:1.05;letter-spacing:-.01em}
+.hero h1 em{font-style:normal;color:var(--red);position:relative;display:inline-block}
+.hero h1 em::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:5px;background:rgba(255,70,85,.22)}
+.lede{margin-top:20px;color:var(--dim);max-width:640px;font-size:15px;line-height:1.85}
+.hero-actions{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
+.hero-facts{list-style:none;margin:32px 0 0;padding:20px 0 0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.hero-facts li{display:flex;flex-direction:column;gap:3px}
+.hero-facts b{font-size:19px;color:var(--mint);letter-spacing:.01em}
+.hero-facts span{font-size:11.5px;color:var(--dim2);line-height:1.5}
+
+.live-card{
+  background:linear-gradient(165deg,#121b24,#0b1117 55%);
+  border:1px solid var(--line);padding:22px;position:relative;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%);
+}
+.live-card::before{
+  content:"";position:absolute;left:0;top:0;width:44px;height:2px;background:var(--red);
+}
+.live-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
+.live-head span{font-size:10.5px;letter-spacing:.2em;color:var(--dim2)}
+.live-head em{font-style:normal;font-size:10px;color:var(--mint);letter-spacing:.08em;border:1px solid rgba(56,232,192,.3);padding:2px 7px}
+.live-sens{display:flex;align-items:flex-end;gap:10px}
+.live-sens b{font-size:54px;line-height:.95;letter-spacing:-.02em}
+.live-sens i{font-style:normal;font-size:11px;color:var(--dim2);letter-spacing:.16em;padding-bottom:7px}
+.live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.live-grid div{background:rgba(255,255,255,.025);border:1px solid var(--line);padding:9px 10px}
+.live-grid span{display:block;font-size:9.5px;letter-spacing:.12em;color:var(--dim2)}
+.live-grid b{font-size:16px;font-weight:700}
+.gauge{margin-top:16px}
+.gauge-bar{height:6px;background:linear-gradient(90deg,var(--red),var(--amber) 45%,var(--mint));position:relative;opacity:.85}
+.gauge-marker{position:absolute;top:-5px;width:3px;height:16px;background:#fff;box-shadow:0 0 10px rgba(255,255,255,.8);transform:translateX(-50%);transition:left .4s cubic-bezier(.2,.8,.2,1)}
+.gauge-labels{display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim2);margin-top:7px;letter-spacing:.06em}
+
+/* ============ 区块 ============ */
+.section{max-width:1220px;margin:0 auto;padding:44px 26px 10px;scroll-margin-top:80px}
+.sec-head{display:flex;align-items:flex-end;gap:18px;margin-bottom:24px;flex-wrap:wrap}
+.sec-num{
+  font-size:44px;line-height:.85;font-weight:700;color:transparent;
+  -webkit-text-stroke:1px rgba(255,70,85,.65);letter-spacing:-.03em;
+}
+.sec-head h2{font-size:24px;letter-spacing:.01em}
+.sec-head p{color:var(--dim2);font-size:13px;max-width:660px;margin-left:auto;text-align:right;line-height:1.7}
+.panel{
+  background:linear-gradient(170deg,#101821,#0c1319);
+  border:1px solid var(--line);padding:22px;position:relative;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%);
+}
+.panel h3{font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.panel h3::before{content:"";width:3px;height:14px;background:var(--red)}
+.panel .hint{font-size:12px;color:var(--dim2);line-height:1.7;margin-top:12px}
+
+/* ============ 表单 ============ */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.field{display:block;margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.field>span{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;letter-spacing:.1em;color:var(--dim);margin-bottom:7px}
+.field>span i{font-style:normal;color:var(--dim2);font-size:10.5px;letter-spacing:.04em}
+.field input,.field select{
+  width:100%;background:#080d12;border:1px solid var(--line);color:var(--txt);
+  padding:11px 13px;font-family:inherit;font-size:15px;outline:none;transition:.15s;
+  font-variant-numeric:tabular-nums;
+}
+.field input:focus,.field select:focus{border-color:var(--red);background:#0b1218;box-shadow:0 0 0 3px rgba(255,70,85,.08)}
+.field input::placeholder{color:#4c5c69}
+.field small{display:block;margin-top:6px;font-size:10.5px;color:var(--dim2);line-height:1.55}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.chips:last-child{margin-bottom:0}
+.chip{
+  padding:8px 13px;border:1px solid var(--line);background:rgba(255,255,255,.02);
+  font-size:12px;color:var(--dim);cursor:pointer;transition:.15s;font-family:inherit;
+  letter-spacing:.02em;user-select:none;
+}
+.chip:hover{border-color:var(--line2);color:#fff}
+.chip.on{background:rgba(255,70,85,.14);border-color:var(--red);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,70,85,.2)}
+.chip small{display:block;font-size:9.5px;color:var(--dim2);letter-spacing:.02em}
+.chip.on small{color:rgba(255,255,255,.65)}
+.chip-row{margin-bottom:16px}
+.chip-row>label{display:block;font-size:11px;letter-spacing:.12em;color:var(--dim2);margin-bottom:8px}
+
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:4px;background:linear-gradient(90deg,var(--red),var(--amber),var(--mint));
+  outline:none;margin:12px 0 6px;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;background:#fff;border:3px solid #0b1117;
+  border-radius:50%;box-shadow:0 0 0 1px var(--red),0 0 12px rgba(255,70,85,.7);cursor:grab;
+}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;background:#fff;border:3px solid #0b1117;border-radius:50%}
+.range-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--dim2);letter-spacing:.06em}
+
+/* ============ 测试卡片 ============ */
+.test-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.test-card{
+  background:linear-gradient(170deg,#111a23,#0b1117);
+  border:1px solid var(--line);padding:20px;position:relative;transition:.2s;
+  display:flex;flex-direction:column;gap:12px;overflow:hidden;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%);
+}
+.test-card:hover{border-color:#3a4d5c;transform:translateY(-3px);box-shadow:0 18px 40px -26px rgba(0,0,0,.9)}
+.test-card::after{content:"";position:absolute;inset:0;background:radial-gradient(400px 180px at 100% 0%,rgba(255,70,85,.13),transparent 70%);pointer-events:none;opacity:0;transition:.25s}
+.test-card:hover::after{opacity:1}
+.tc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.tc-idx{font-size:10px;letter-spacing:.2em;color:var(--red);border:1px solid rgba(255,70,85,.35);padding:3px 7px;flex:0 0 auto}
+.tc-tag{font-size:9.5px;letter-spacing:.12em;color:var(--dim2);border:1px solid var(--line);padding:3px 7px}
+.test-card h4{font-size:17px;letter-spacing:.01em}
+.test-card .tc-sub{font-size:11.5px;color:var(--dim2);line-height:1.6;min-height:36px}
+.tc-meta{display:flex;gap:14px;font-size:10.5px;color:var(--dim2);letter-spacing:.04em}
+.tc-meta b{color:var(--dim);font-weight:700}
+.tc-result{
+  border-top:1px dashed var(--line);padding-top:11px;font-size:11.5px;color:var(--dim2);
+  display:flex;flex-direction:column;gap:3px;min-height:52px;justify-content:center;
+}
+.tc-result b{color:var(--mint);font-size:13px}
+.tc-result .bad{color:var(--red)}
+.test-card .btn{margin-top:auto;width:100%}
+
+/* ============ 自动流程 ============ */
+.auto-panel{margin-top:20px;background:linear-gradient(120deg,#131c26,#0d141a 60%);border-color:#2b3b48}
+.auto-head{display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.auto-head h3{margin-bottom:8px}
+.auto-head p{color:var(--dim);font-size:12.5px;max-width:640px;line-height:1.75}
+.auto-steps{list-style:none;margin:22px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.auto-steps li{
+  display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.022);
+  border:1px solid var(--line);padding:11px 12px;transition:.2s;position:relative;
+}
+.auto-steps li i{
+  width:18px;height:18px;flex:0 0 auto;border:1px solid var(--line2);border-radius:50%;
+  display:grid;place-items:center;font-style:normal;font-size:9.5px;color:var(--dim2);margin-top:2px;
+}
+.auto-steps li b{display:block;font-size:12px;color:var(--dim);letter-spacing:.04em}
+.auto-steps li span{display:block;font-size:10px;color:var(--dim2);line-height:1.5;margin-top:2px}
+.auto-steps li em{font-style:normal;font-size:9.5px;color:var(--dim2);letter-spacing:.08em;position:absolute;right:9px;top:9px}
+.auto-steps li.on{border-color:rgba(255,70,85,.55);background:rgba(255,70,85,.08)}
+.auto-steps li.on i{border-color:var(--red);color:var(--red);animation:pulse 1.4s infinite}
+.auto-steps li.done{border-color:rgba(56,232,192,.35)}
+.auto-steps li.done i{border-color:var(--mint);color:var(--mint)}
+.auto-steps li.done em{color:var(--mint)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,70,85,.5)}50%{box-shadow:0 0 0 5px rgba(255,70,85,0)}}
+
+/* ============ 结果 ============ */
+.empty-state{text-align:center;padding:52px 20px}
+.empty-ico{font-size:40px;color:var(--line2);line-height:1;margin-bottom:14px}
+.empty-state h3{justify-content:center;color:var(--dim)}
+.empty-state p{color:var(--dim2);font-size:13px;max-width:520px;margin:0 auto 20px}
+.result-top{display:grid;grid-template-columns:1.05fr .95fr;gap:18px;margin-bottom:18px}
+.sens-hero{
+  display:flex;flex-direction:column;justify-content:center;gap:6px;
+  background:linear-gradient(150deg,#1a1216 0%,#12171d 45%,#0c1116 100%);
+  border-color:rgba(255,70,85,.35);padding:28px 26px;
+}
+.sens-label{font-size:10.5px;letter-spacing:.3em;color:var(--red)}
+.sens-num{
+  font-size:clamp(52px,7vw,84px);line-height:.98;letter-spacing:-.03em;font-weight:700;
+  text-shadow:0 0 42px rgba(255,70,85,.35);font-variant-numeric:tabular-nums;
+}
+.sens-sub{font-size:12.5px;color:var(--dim);letter-spacing:.03em}
+.sens-sub b{color:var(--txt)}
+.sens-band{
+  display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin-top:10px;
+  padding:5px 11px;background:rgba(56,232,192,.07);border:1px solid rgba(56,232,192,.25);
+  font-size:11.5px;color:var(--mint);letter-spacing:.03em;
+}
+.band-bar{display:flex;gap:30px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.band-bar div{display:flex;flex-direction:column;gap:2px}
+.band-bar span{font-size:9.5px;letter-spacing:.16em;color:var(--dim2)}
+.band-bar b{font-size:16px;font-variant-numeric:tabular-nums;color:var(--txt)}
+.sens-hero .btn{align-self:flex-start;margin-top:12px}
+.sens-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.stat-panel{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;height:100%;gap:1px;background:var(--line);padding:1px}
+.stat-panel>div{background:#0d141a;padding:16px 18px;display:flex;flex-direction:column;gap:3px;justify-content:center}
+.stat-panel span{font-size:10px;letter-spacing:.14em;color:var(--dim2)}
+.stat-panel b{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.stat-panel b small{font-size:11px;color:var(--dim2);font-weight:400;margin-left:3px}
+.stat-panel i{font-style:normal;font-size:10px;color:var(--dim2)}
+.conf-bar{height:4px;background:#1a242e;margin-top:6px;position:relative;overflow:hidden}
+.conf-bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--red),var(--amber),var(--mint))}
+
+#chart{width:100%;height:230px;display:block;margin-top:4px}
+.note{font-size:11px;color:var(--dim2);line-height:1.7;margin-top:10px}
+
+#adjLog{list-style:none;margin:0;padding:0;counter-reset:a}
+#adjLog li{
+  display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);
+  font-size:12.5px;color:var(--dim);line-height:1.65;counter-increment:a;
+}
+#adjLog li:last-child{border-bottom:0}
+#adjLog li::before{
+  content:counter(a,decimal-leading-zero);font-size:10px;color:var(--red);
+  border:1px solid rgba(255,70,85,.35);padding:1px 5px;height:fit-content;margin-top:2px;flex:0 0 auto;
+  letter-spacing:.05em;
+}
+#adjLog li b{color:var(--txt)}
+#adjLog li .val{color:var(--mint);font-variant-numeric:tabular-nums}
+
+.variants{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.variant{border:1px solid var(--line);background:rgba(255,255,255,.02);padding:16px;display:flex;flex-direction:column;gap:6px;transition:.2s}
+.variant:hover{border-color:var(--line2);background:rgba(255,255,255,.04)}
+.variant.hot{border-color:rgba(255,70,85,.5);background:rgba(255,70,85,.07)}
+.variant span{font-size:10px;letter-spacing:.14em;color:var(--dim2)}
+.variant b{font-size:26px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.variant i{font-style:normal;font-size:10.5px;color:var(--dim2);line-height:1.5}
+.variant .btn{margin-top:6px}
+
+table.metrics{width:100%;border-collapse:collapse;font-size:12px}
+table.metrics th{
+  text-align:left;font-size:10px;letter-spacing:.12em;color:var(--dim2);font-weight:400;
+  padding:8px 10px;border-bottom:1px solid var(--line);text-transform:uppercase;
+}
+table.metrics td{padding:9px 10px;border-bottom:1px solid rgba(32,44,54,.6);color:var(--dim)}
+table.metrics td.n{font-variant-numeric:tabular-nums;color:var(--txt)}
+table.metrics tr:hover td{background:rgba(255,255,255,.02)}
+.pill{display:inline-block;padding:1px 7px;font-size:10px;letter-spacing:.06em;border:1px solid var(--line2);color:var(--dim2)}
+.pill.ok{border-color:rgba(56,232,192,.4);color:var(--mint)}
+.pill.warn{border-color:rgba(255,196,77,.4);color:var(--amber)}
+.pill.bad{border-color:rgba(255,70,85,.4);color:var(--red)}
+
+.steps-list{margin:0;padding:0;list-style:none;counter-reset:s}
+.steps-list li{
+  display:flex;gap:13px;padding:9px 0;font-size:13px;color:var(--dim);line-height:1.7;counter-increment:s;
+}
+.steps-list li::before{
+  content:counter(s);flex:0 0 auto;width:20px;height:20px;border:1px solid var(--line2);
+  display:grid;place-items:center;font-size:10.5px;color:var(--red);margin-top:1px;
+}
+.steps-list li b{color:var(--txt)}
+kbd{background:#1a242e;border:1px solid var(--line2);padding:1px 5px;font-size:11px;font-family:inherit;color:var(--txt)}
+
+.ads-tool{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.ads-tool .field{margin:0}
+.ads-out{display:flex;align-items:center;gap:10px}
+.ads-out b{font-size:22px;color:var(--mint);font-variant-numeric:tabular-nums}
+
+.dpi-convert{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);flex-wrap:wrap}
+.dpi-convert>span{font-size:11.5px;letter-spacing:.06em;color:var(--dim2)}
+.dpi-convert input{
+  width:110px;background:#080d12;border:1px solid var(--line);color:var(--txt);
+  padding:7px 10px;font-family:inherit;font-size:13px;outline:none;font-variant-numeric:tabular-nums;
+}
+.dpi-convert input:focus{border-color:var(--red)}
+.dpi-convert b{font-size:18px;color:var(--mint);font-variant-numeric:tabular-nums;min-width:58px}
+
+.result-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+
+/* ============ 舞台 ============ */
+.stage{position:fixed;inset:0;z-index:200;background:#04070a;display:flex;align-items:center;justify-content:center;padding:14px}
+.stage[hidden]{display:none}
+.stage-wrap{position:relative;background:#070b0f;box-shadow:0 0 0 1px #17222c,0 40px 120px -40px rgba(0,0,0,1);overflow:hidden}
+#cv{display:block;cursor:none;background:#070b0f}
+.stage-hud{position:absolute;inset:0;pointer-events:none;font-size:12px}
+.hud-top{
+  position:absolute;left:0;right:0;top:0;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;
+  background:linear-gradient(180deg,rgba(4,7,10,.75),transparent);
+}
+.hud-left b{display:block;font-size:12px;letter-spacing:.22em;color:#fff}
+.hud-left span{display:block;font-size:10px;letter-spacing:.14em;color:var(--dim2);margin-top:3px}
+.hud-right{text-align:right;display:flex;gap:22px}
+.hud-right div{text-align:right}
+.hud-right span{display:block;font-size:9px;letter-spacing:.16em;color:var(--dim2)}
+.hud-right b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.hud-bottom{
+  position:absolute;left:0;right:0;bottom:0;padding:12px 18px 14px;
+  background:linear-gradient(0deg,rgba(4,7,10,.8),transparent);
+  display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+}
+.hud-hint{font-size:10.5px;letter-spacing:.08em;color:var(--dim2)}
+.hud-hint b{color:var(--dim)}
+.prog{flex:1;height:3px;background:rgba(255,255,255,.1);position:relative;max-width:340px}
+.prog i{position:absolute;left:0;top:0;bottom:0;background:var(--red);transition:width .12s linear}
+.cd{
+  position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;
+}
+.cd-in{text-align:center}
+.cd-num{
+  font-size:clamp(90px,16vw,190px);line-height:.8;font-weight:700;color:#fff;
+  text-shadow:0 0 60px rgba(255,70,85,.55);font-variant-numeric:tabular-nums;letter-spacing:-.04em;
+}
+.cd-num.pop{animation:pop .32s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{0%{transform:scale(1.35);opacity:0}60%{opacity:1}100%{transform:scale(1);opacity:1}}
+.cd-hint{margin-top:14px;font-size:12px;letter-spacing:.34em;color:var(--red);text-transform:uppercase}
+
+.overlay-panel{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:rgba(4,7,10,.9);backdrop-filter:blur(6px);pointer-events:auto;
+}
+.overlay-panel[hidden]{display:none}
+.op-card{
+  max-width:520px;width:100%;background:linear-gradient(170deg,#111a23,#0a1015);
+  border:1px solid var(--line2);padding:30px;position:relative;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%);
+}
+.op-card::before{content:"";position:absolute;left:0;top:0;width:56px;height:2px;background:var(--red)}
+.op-kicker{font-size:10px;letter-spacing:.28em;color:var(--red);margin-bottom:10px}
+.op-card h3{font-size:24px;margin-bottom:12px}
+.op-card p{font-size:13px;color:var(--dim);line-height:1.8}
+.op-card ul{margin:14px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.op-card ul li{font-size:12.5px;color:var(--dim);display:flex;gap:9px;line-height:1.6}
+.op-card ul li::before{content:"▸";color:var(--red);flex:0 0 auto}
+.op-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.op-note{margin-top:14px;font-size:11px;color:var(--dim2);line-height:1.6}
+.op-err{color:var(--red);font-size:12px;margin-top:10px;line-height:1.6;display:none}
+.op-err.show{display:block}
+.op-metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);margin-top:16px}
+.op-metrics div{background:#0c1319;padding:11px 13px}
+.op-metrics span{display:block;font-size:9.5px;letter-spacing:.14em;color:var(--dim2)}
+.op-metrics b{font-size:17px;font-variant-numeric:tabular-nums}
+.op-metrics b small{font-size:10px;color:var(--dim2);font-weight:400}
+
+.toast{
+  position:fixed;left:50%;bottom:34px;transform:translate(-50%,20px);z-index:300;
+  background:var(--mint);color:#04211b;padding:11px 22px;font-size:13px;font-weight:700;
+  letter-spacing:.04em;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 10px 40px -10px rgba(56,232,192,.8);
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+footer{border-top:1px solid var(--line);margin-top:60px;padding:26px 26px 40px;color:var(--dim2);font-size:11px;line-height:1.9}
+.footer-in{max-width:1220px;margin:0 auto;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+@media (max-width:1080px){
+  .hero-in{grid-template-columns:1fr;gap:30px}
+  .test-grid{grid-template-columns:1fr 1fr}
+  .auto-steps{grid-template-columns:1fr 1fr}
+  .result-top{grid-template-columns:1fr}
+  .steps{display:none}
+}
+@media (max-width:720px){
+  .grid-2,.test-grid,.result-top,.variants,.hero-facts{grid-template-columns:1fr}
+  .sec-head p{text-align:left;margin-left:0}
+  .ads-tool{grid-template-columns:1fr}
+  .live-grid{grid-template-columns:1fr 1fr}
+  .wrap,.section,.hero-in{padding-left:16px;padding-right:16px}
+  .topbar-in{padding:0 16px;gap:12px}
+  .brand-txt span{display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="brand-mark">V</div>
+      <div class="brand-txt"><b>VAL // SENS LAB</b><span>无畏契约 · 个人灵敏度生成器</span></div>
+    </div>
+    <nav class="steps" id="nav">
+      <a href="#s1" data-nav="s1"><i>01</i>习惯档案</a>
+      <a href="#s2" data-nav="s2"><i>02</i>内嵌测试</a>
+      <a href="#s3" data-nav="s3"><i>03</i>专项校准</a>
+      <a href="#s4" data-nav="s4"><i>04</i>游戏数值</a>
+    </nav>
+    <div class="topstat"><span>SENS</span><b id="topBase">0.350</b></div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-in">
+    <div class="hero-copy">
+      <div class="kicker">PERSONAL AIM CALIBRATION · 2026</div>
+      <h1>找到只属于你的<br><em>战术灵敏度</em></h1>
+      <p class="lede">
+        不用照抄职业选手。先读取你的 DPI、握姿、鼠标垫与瞄准习惯，再用内嵌的悬停甩枪 / 微目标精准 / 动态追踪测试反复测量，拟合出误差-速度的最佳平衡点，最后输出一个能直接填进《无畏契约》的三位小数数值。
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary big" href="#s2">开始内嵌测试</a>
+        <a class="btn ghost big" href="#s1">先填习惯档案</a>
+      </div>
+      <ul class="hero-facts">
+        <li><b>0.07°</b><span>官方每计数转角，测试画面与游戏同源换算</span></li>
+        <li><b>103°</b><span>锁定的横向 FOV，按游戏原生投影绘制</span></li>
+        <li><b>0.001</b><span>三位小数输出，可直接键入游戏设置</span></li>
+      </ul>
+    </div>
+    <div class="live-card">
+      <div class="live-head"><span>当前测试基准</span><em id="liveTag">实时计算</em></div>
+      <div class="live-sens"><b id="baseSens">0.350</b><i>VALORANT SENS</i></div>
+      <div class="live-grid">
+        <div><span>eDPI</span><b id="baseEdpi">280</b></div>
+        <div><span>cm / 360°</span><b id="baseCm">46.7</b></div>
+        <div><span>180° 手臂行程</span><b id="baseTurn">23.3 cm</b></div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-bar"><span class="gauge-marker" id="baseMarker" style="left:55%"></span></div>
+        <div class="gauge-labels"><span>快 · 腕流</span><span>均衡</span><span>稳 · 臂流</span></div>
+      </div>
+      <p class="hint" id="baseNote">这是测试起点，不是最终答案。完成内嵌测试后会自动修正。</p>
+    </div>
+  </div>
+</section>
+
+<main>
+<!-- ================= 01 ================= -->
+<section id="s1" class="section">
+  <div class="sec-head">
+    <span class="sec-num">01</span>
+    <h2>建立你的瞄准档案</h2>
+    <p>所有数值都在本地计算，不会上传。请按鼠标驱动里真实使用的参数填写。</p>
+  </div>
+  <div class="grid-2">
+    <div class="panel">
+      <h3>外设参数</h3>
+      <label class="field">
+        <span>鼠标 DPI <i>驱动里设置的值</i></span>
+        <input id="fDpi" type="number" inputmode="numeric" min="100" max="32000" step="50" value="800">
+        <small>必须与鼠标驱动 / 板载配置一致，否则 egame 内实际灵敏度会偏差。</small>
+      </label>
+      <label class="field">
+        <span>当前游戏灵敏度 <i>0.1 – 10.0，可留空</i></span>
+        <input id="fSens" type="number" inputmode="decimal" min="0.1" max="10" step="0.001" placeholder="不知道就留空，从零推导">
+        <small>填了会把你的现有手感当先验：测试只会围绕它微调，不会推翻重来。</small>
+      </label>
+      <div class="row-2">
+        <label class="field">
+          <span>鼠标垫可用宽度 <i>cm</i></span>
+          <input id="fPad" type="number" inputmode="numeric" min="10" max="200" step="1" value="45">
+        </label>
+        <label class="field">
+          <span>显示器刷新率 <i>Hz</i></span>
+          <select id="fHz">
+            <option value="60">60</option>
+            <option value="144" selected>144</option>
+            <option value="165">165</option>
+            <option value="180">180</option>
+            <option value="240">240</option>
+            <option value="360">360</option>
+            <option value="500">500</option>
+          </select>
+        </label>
+      </div>
+      <small style="display:block;margin-top:12px;font-size:10.5px;color:var(--dim2);line-height:1.6">
+        鼠标垫宽度只用于“180° 回正是否够用”的物理约束：一次完整转身不应该超过垫面可用宽度。
+      </small>
+    </div>
+
+    <div class="panel">
+      <h3>操作习惯</h3>
+      <div class="chip-row">
+        <label>主要发力方式</label>
+        <div class="chips" data-group="grip">
+          <button type="button" class="chip" data-value="arm">大臂流<small>手臂主导 · 慢而稳</small></button>
+          <button type="button" class="chip on" data-value="hybrid">手臂 + 手腕<small>大多数人的真实状态</small></button>
+          <button type="button" class="chip" data-value="wrist">手腕流<small>腕部主导 · 快而活</small></button>
+        </div>
+      </div>
+      <div class="chip-row">
+        <label>常用定位</label>
+        <div class="chips" data-group="role">
+          <button type="button" class="chip" data-value="duelist">决斗 / 高频对枪<small>需要大量转身</small></button>
+          <button type="button" class="chip on" data-value="hybrid">全能 / 混合位<small>均衡需求</small></button>
+          <button type="button" class="chip" data-value="control">控场 / 哨位<small>架点为主</small></button>
+          <button type="button" class="chip" data-value="sniper">狙击 / 精准优先<small>微调要求高</small></button>
+        </div>
+      </div>
+      <div class="chip-row">
+        <label>最常见的失误</label>
+        <div class="chips" data-group="error">
+          <button type="button" class="chip" data-value="over">经常甩过头<small>准星冲过目标</small></button>
+          <button type="button" class="chip on" data-value="balanced">比较均衡<small>没什么固定毛病</small></button>
+          <button type="button" class="chip" data-value="under">经常甩不到<small>准星停得太早</small></button>
+        </div>
+      </div>
+      <div class="chip-row" style="margin-bottom:6px">
+        <label>手感偏好 <b id="prefOut" style="color:var(--mint)">均衡</b></label>
+        <input id="fPref" type="range" min="0" max="100" value="55">
+        <div class="range-labels"><span>快 · 灵活</span><span>精准 · 稳定</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 02 ================= -->
+<section id="s2" class="section">
+  <div class="sec-head">
+    <span class="sec-num">02</span>
+    <h2>内嵌瞄准实验室</h2>
+    <p>测试画面按《无畏契约》原生 103° 横向 FOV 与 0.07° / 计数 的比例绘制，测出来的手感与游戏内一致。</p>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;display:flex;gap:18px;align-items:center;background:linear-gradient(120deg,#131c26,#0d141a)">
+    <div style="flex:0 0 auto;width:38px;height:38px;border:1px solid rgba(255,70,85,.45);display:grid;place-items:center;color:var(--red);font-size:18px">◎</div>
+    <div style="font-size:12.5px;color:var(--dim);line-height:1.75">
+      <b style="color:#fff">规则：准星碰到目标就算命中，全程不需要点击。</b>
+     进入测试后会锁定鼠标并出现准星，画面为 16:9 游戏比例；倒计时用高精度时钟计算，帧率波动也不会卡住。
+      按 <kbd>Esc</kbd> 解除锁定即暂停。
+    </div>
+  </div>
+
+  <div class="test-grid">
+    <div class="test-card">
+      <div class="tc-top"><span class="tc-idx">A</span><span class="tc-tag">HOVER · NO CLICK</span></div>
+      <h4>悬停甩枪</h4>
+      <p class="tc-sub">Aimlabs 风格的大范围甩枪。考验大角度定位速度与路径效率。</p>
+      <div class="tc-meta"><span>目标 <b>12</b></span><span>角度 <b>9–29°</b></span><span>约 <b>20s</b></span></div>
+      <div class="tc-result" id="rFlick">尚未测试</div>
+      <button class="btn primary" id="btnFlick" type="button">开始 · 悬停甩枪</button>
+    </div>
+
+    <div class="test-card">
+      <div class="tc-top"><span class="tc-idx">B</span><span class="tc-tag">PRECISION</span></div>
+      <h4>微目标精准</h4>
+      <p class="tc-sub">小目标 + 限时。灵敏度过高会抖、过低会慢，是拟合曲线的主要依据。</p>
+      <div class="tc-meta"><span>目标 <b>16</b></span><span>距离 <b>3–10°</b></span><span>限时 <b>1.8s</b></span></div>
+      <div class="tc-result" id="rMicro">尚未测试</div>
+      <button class="btn primary" id="btnMicro" type="button">开始 · 微目标精准</button>
+    </div>
+
+    <div class="test-card">
+      <div class="tc-top"><span class="tc-idx">C</span><span class="tc-tag">TRACKING</span></div>
+      <h4>动态追踪</h4>
+      <p class="tc-sub">移动目标持续覆盖。检验灵敏度在跟枪时是否稳定、会不会追不上。</p>
+      <div class="tc-meta"><span>时长 <b>12s</b></span><span>峰值 <b>≤30°/s</b></span><span>约 <b>15s</b></span></div>
+      <div class="tc-result" id="rTrack">尚未测试</div>
+      <button class="btn primary" id="btnTrack" type="button">开始 · 动态追踪</button>
+    </div>
+  </div>
+
+  <div class="panel auto-panel">
+    <div class="auto-head">
+      <div>
+        <h3>一键智能生成</h3>
+        <p>
+          每次在 0.80× / 1.00× / 1.25× 三档各跑 16 个目标（顺序随机，抵消学习与疲劳），再把<b>所有已测轮次</b>汇总做最小二乘拟合、取峰值并在附近补一轮精修，
+          最后用一轮悬停甩枪与一轮动态追踪复核。多次测试的轮次会累加到同一条曲线上，越测越准。单次约 2 分半。
+        </p>
+      </div>
+      <button class="btn primary big" id="btnAuto" type="button">开始智能测试</button>
+    </div>
+    <ol class="auto-steps" id="autoSteps">
+      <li data-k="warm"><i>·</i><div><b>热身</b><span>8 个目标 · 不计分</span></div><em>待运行</em></li>
+      <li data-k="r1"><i>·</i><div><b>第 1 轮</b><span>0.80× 档</span></div><em>待运行</em></li>
+      <li data-k="r2"><i>·</i><div><b>第 2 轮</b><span>1.00× 档</span></div><em>待运行</em></li>
+      <li data-k="r3"><i>·</i><div><b>第 3 轮</b><span>1.25× 档</span></div><em>待运行</em></li>
+      <li data-k="fit"><i>·</i><div><b>汇总拟合</b><span>含历史轮次</span></div><em>待运行</em></li>
+      <li data-k="r4"><i>·</i><div><b>精修轮</b><span>峰值附近补测</span></div><em>待运行</em></li>
+      <li data-k="flick"><i>·</i><div><b>甩枪复核</b><span>大角度速度检查</span></div><em>待运行</em></li>
+      <li data-k="track"><i>·</i><div><b>追踪复核</b><span>跟枪稳定性检查</span></div><em>待运行</em></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================= 03 ================= -->
+<section id="s3" class="section">
+  <div class="sec-head">
+    <span class="sec-num">03</span>
+    <h2>专项校准与试枪</h2>
+    <p>辅助模块：转身物理约束、自由试枪、开镜倍率换算。都不是必做项，但能让最终数值更贴合你的桌面。</p>
+  </div>
+  <div class="test-grid">
+    <div class="test-card">
+      <div class="tc-top"><span class="tc-idx">D</span><span class="tc-tag">TURN CHECK</span></div>
+      <h4>180° 转身校准</h4>
+      <p class="tc-sub">目标出现在侧面 128°–175°，检验当前灵敏度能不能一次转到位、实际要扫多少厘米。</p>
+      <div class="tc-meta"><span>目标 <b>4</b></span><span>角度 <b>128–175°</b></span><span>约 <b>12s</b></span></div>
+      <div class="tc-result" id="rTurn">尚未测试</div>
+      <button class="btn primary" id="btnTurn" type="button">开始 · 转身校准</button>
+    </div>
+
+    <div class="test-card">
+      <div class="tc-top"><span class="tc-idx">E</span><span class="tc-tag">FREE RANGE</span></div>
+      <h4>试枪房</h4>
+      <p class="tc-sub">用最终灵敏度无限练枪，可在画面里 ±15% 微调并直接复制，找到“就是它”的手感。</p>
+      <div class="tc-meta"><span>无限目标</span><span>可微调</span><span>随时退出</span></div>
+      <div class="tc-result" id="rFree">需要先有推荐数值</div>
+      <button class="btn" id="btnFree" type="button" disabled>开始 · 试枪房</button>
+    </div>
+
+    <div class="test-card">
+      <div class="tc-top"><span class="tc-idx">F</span><span class="tc-tag">PHYSICS</span></div>
+      <h4>桌面前置检查</h4>
+      <p class="tc-sub">Windows 指针加速、浏览器缩放、鼠标锁定都会影响测量。先确认这三项再测。</p>
+      <div class="tc-result" style="gap:6px">
+        <span id="chkAccel">· Windows「提高指针精确度」建议关闭</span>
+        <span id="chkZoom">· 浏览器缩放保持 100%</span>
+        <span id="chkLock">· 鼠标锁定：点击测试后自动请求</span>
+      </div>
+      <button class="btn" id="btnGuide" type="button">查看设置指引</button>
+    </div>
+  </div>
+
+  <div class="panel" id="guidePanel" hidden style="margin-top:18px">
+    <h3>测量前的桌面检查</h3>
+    <div class="grid-2">
+      <div>
+        <ol class="steps-list">
+          <li><span><b>关闭 Windows 指针加速</b>：设置 → 蓝牙和其他设备 → 鼠标 → 其他鼠标设置 → 指针选项 → 取消“提高指针精确度”。</span></li>
+          <li><span><b>浏览器缩放 100%</b>：<kbd>Ctrl</kbd> + <kbd>0</kbd>。缩放会改变画面像素与鼠标位移的对应关系。</span></li>
+          <li><span><b>用原始输入</b>：本页会请求 <code>unadjustedMovement</code>（绕过系统加速）；若浏览器不支持会退回普通锁定，精度会略降。</span></li>
+        </ol>
+      </div>
+      <div>
+        <ol class="steps-list" style="counter-reset:s 3">
+          <li><span><b>确认 DPI</b>：在鼠标驱动里读取，或按住 DPI 键切到固定档位，不要用“DPI 切换键”边玩边换。</span></li>
+          <li><span><b>16:9 画面</b>：测试区强制 16:9 并锁定 103° 横向 FOV，与游戏默认一致；带鱼屏 / 4:3 拉伸会让手感略有差异。</span></li>
+          <li><span><b>一次测完</b>：中途不要改 DPI、不要改分辨率，否则前后轮次不可比。</span></li>
+        </ol>
+      </div>
+    </div>
+    <p class="hint">游戏内路径：设置 → 常规 → 鼠标 → 灵敏度：瞄准。输入框支持三位小数，直接键入即可。</p>
+  </div>
+</section>
+<!-- ================= 04 ================= -->
+<section id="s4" class="section">
+  <div class="sec-head">
+    <span class="sec-num">04</span>
+    <h2>你的专属游戏数值</h2>
+    <p>输出格式为三位小数，直接对应《无畏契约》→ 设置 → 常规 → 鼠标 → 灵敏度：瞄准。</p>
+  </div>
+
+  <div class="panel empty-state" id="resultEmpty">
+    <div class="empty-ico">◎</div>
+    <h3>还没有测试数据</h3>
+    <p>完成「一键智能生成」，或至少完成一次微目标精准测试，这里会生成可直接填入游戏的灵敏度数值与完整推导过程。</p>
+    <a class="btn primary" href="#s2">去跑一次智能测试</a>
+  </div>
+
+  <div id="resultBody" hidden>
+    <div class="result-top">
+      <div class="panel sens-hero">
+        <div class="sens-label">SENSITIVITY · AIM</div>
+        <div class="sens-num" id="finalSens">0.350</div>
+        <div class="sens-sub">eDPI <b id="resEdpi">280</b> · 每 360° 需 <b id="resCm">46.7</b> cm</div>
+        <div class="sens-band" id="sensBand">推荐区间 —</div>
+        <div class="sens-actions">
+          <button class="btn primary" id="btnCopySens" type="button">复制数值</button>
+          <button class="btn ghost" id="btnCopyReport" type="button">复制完整报告</button>
+        </div>
+      </div>
+      <div class="panel" style="padding:1px;background:var(--line)">
+        <div class="stat-panel" style="border:0">
+          <div><span>180° 手臂行程</span><b><span id="res180">23.3</span><small>cm</small></b><i>一次完整转身的物理距离</i></div>
+          <div><span>90° 微调行程</span><b><span id="res90">11.7</span><small>cm</small></b><i>一颗头宽度的修正量</i></div>
+          <div><span>测试可信度</span><b id="resConf">—</b><i class="conf-bar"><i id="confBar" style="width:0%"></i></i></div>
+          <div><span>已完成测试</span><b id="resRuns">0</b><i id="resRunsTip">至少 3 轮才有稳定结论</i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px">
+      <h3>得分曲线 · 最优点</h3>
+      <div class="band-bar">
+        <div><span>推荐区间</span><b id="bandText">—</b></div>
+        <div><span>累计有效轮次</span><b id="totalText">0 轮</b></div>
+        <div><span>历次一致性</span><b id="stableText">首轮</b></div>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="note" id="chartNote"></div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px">
+      <h3>这个数值是怎么来的</h3>
+      <ol id="adjLog"></ol>
+      <p class="hint">每一步都可以追溯。如果你不同意某条调整，可以在“三档取值”里直接选相邻档位。</p>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px">
+      <h3>三档取值</h3>
+      <div class="variants">
+        <div class="variant">
+          <span>稳定型 · 精准优先</span>
+          <b id="vStable">0.330</b>
+          <i>更慢，微调更稳，适合架点与狙击</i>
+          <button class="btn sm" type="button" data-copy="vStable">复制</button>
+        </div>
+        <div class="variant hot">
+          <span>平衡型 · 首选</span>
+          <b id="vBalanced">0.350</b>
+          <i>测试得出的最优点，速度与稳定兼顾</i>
+          <button class="btn sm primary" type="button" data-copy="vBalanced">复制</button>
+        </div>
+        <div class="variant">
+          <span>速度型 · 转点优先</span>
+          <b id="vSpeed">0.372</b>
+          <i>更快，转身与切枪更灵活，需要适应</i>
+          <button class="btn sm" type="button" data-copy="vSpeed">复制</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px">
+      <h3>填入游戏</h3>
+      <ol class="steps-list">
+        <li><span>打开《无畏契约》→ <b>设置</b> → <b>常规</b> → <b>鼠标</b>，找到“<b>灵敏度：瞄准</b>”。</span></li>
+        <li><span>把数值改成 <b id="stepSens" style="color:var(--mint)">0.350</b>。可以直接用键盘输入，游戏接受三位小数。</span></li>
+        <li><span>鼠标 DPI 必须保持 <b id="stepDpi">800</b> 不变；若你在驱动里改了 DPI，请用本页重新换算一次。</span></li>
+        <li><span>开镜 / 狙击倍率先保持 <b>1.000</b>；如果你原来调过，用下方换算器把旧倍率一起迁移过来。</span></li>
+        <li><span>进训练场打 3 轮困难机器人，只做 <b>±0.005</b> 级别的微调；不要一局一改，至少适应 2–3 天再评价。</span></li>
+      </ol>
+      <div class="ads-tool">
+        <label class="field">
+          <span>旧灵敏度</span>
+          <input id="adsOldSens" type="number" step="0.001" min="0.1" max="10" placeholder="例如 0.42">
+        </label>
+        <label class="field">
+          <span>旧开镜 / 狙击倍率</span>
+          <input id="adsOldMul" type="number" step="0.01" min="0.1" max="3" placeholder="例如 1.00">
+        </label>
+        <div class="ads-out">
+          <span style="font-size:11px;color:var(--dim2)">新倍率</span>
+          <b id="adsNewMul">1.000</b>
+          <button class="btn sm" type="button" id="btnCopyAds">复制</button>
+        </div>
+      </div>
+      <p class="hint">原理：开镜倍率是叠加在“灵敏度：瞄准”之上的。换了主灵敏度后，按 <b>新倍率 = 旧灵敏度 × 旧倍率 ÷ 新灵敏度</b> 重算，开镜手感才不会跟着变。</p>
+
+      <div class="dpi-convert">
+        <span>换 DPI 换算</span>
+        <input id="convDpi" type="number" inputmode="numeric" step="50" min="100" max="32000" value="1600">
+        <span>→ 灵敏度</span>
+        <b id="convOut">0.184</b>
+        <button class="btn sm" type="button" id="btnCopyConv">复制</button>
+      </div>
+      <p class="hint" id="convNote">保持同一个 cm/360°，只改鼠标 DPI 时用这一行换算。</p>
+    </div>
+
+    <div class="panel">
+      <h3>测试明细</h3>
+      <table class="metrics">
+        <thead><tr><th>轮次</th><th>测试</th><th>灵敏度</th><th>关键指标</th><th>得分</th><th>状态</th></tr></thead>
+        <tbody id="metricTable"></tbody>
+      </table>
+      <p class="hint">得分 = 每秒清理目标数 × 命中率 × 路径效率修正。同一套目标序列在不同灵敏度下重复使用，保证可比性。</p>
+    </div>
+
+    <div class="result-actions">
+      <a class="btn primary" href="#s2">再测一轮</a>
+      <button class="btn" id="btnRegen" type="button">用现有数据重算</button>
+      <button class="btn ghost" id="btnClear" type="button">清空所有数据</button>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="footer-in">
+    <div>
+      <b style="color:var(--dim)">VAL // SENS LAB</b> · 本地计算，不联网、不上传成绩。<br>
+      换算依据：VALORANT 官方 yaw = 0.07° / 计数，横向 FOV 103°，灵敏度可输入 0.1–10.0。
+    </div>
+    <div>
+      非官方工具，与 Riot Games 无关联。VALORANT、无畏契约及相关名称归其权利人所有。
+    </div>
+  </div>
+</footer>
+<div class="stage" id="stage" hidden>
+  <div class="stage-wrap" id="stageWrap">
+    <canvas id="cv"></canvas>
+    <div class="stage-hud">
+      <div class="hud-top">
+        <div class="hud-left"><b id="hudName">悬停甩枪</b><span id="hudSens">SENS 0.350 · 800 DPI</span></div>
+        <div class="hud-right">
+          <div><span id="hudMainL">命中</span><b id="hudMain">0 / 12</b></div>
+          <div><span id="hudTimeL">用时</span><b id="hudTime">0.0</b></div>
+        </div>
+      </div>
+      <div class="hud-bottom">
+        <div class="hud-hint" id="hudHint">移动鼠标让准星碰到目标 · 无需点击</div>
+        <div class="prog"><i id="progBar" style="width:0%"></i></div>
+      </div>
+      <div class="cd" id="cdBox">
+        <div class="cd-in">
+          <div class="cd-num" id="cdNum">3</div>
+          <div class="cd-hint" id="cdHint">准备瞄准</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay-panel" id="introPanel">
+      <div class="op-card">
+        <div class="op-kicker" id="introKicker">TEST A</div>
+        <h3 id="introTitle">悬停甩枪</h3>
+        <p id="introDesc"></p>
+        <ul id="introList"></ul>
+        <div class="op-actions">
+          <button class="btn primary big" id="btnStartTest" type="button">开始测试</button>
+          <button class="btn ghost" id="btnCloseStage" type="button">返回</button>
+        </div>
+        <div class="op-err" id="introErr"></div>
+        <div class="op-note">进入后浏览器会锁定鼠标指针，请勿按 <kbd>Esc</kbd>（会暂停）。建议 Chrome / Edge，浏览器缩放 100%。</div>
+      </div>
+    </div>
+
+    <div class="overlay-panel" id="resultPanel" hidden>
+      <div class="op-card">
+        <div class="op-kicker">TEST COMPLETE</div>
+        <h3 id="resTitle">完成</h3>
+        <div class="op-metrics" id="resMetrics"></div>
+        <div class="op-actions">
+          <button class="btn primary" id="btnStageAgain" type="button">再测一轮</button>
+          <button class="btn" id="btnStageDone" type="button">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay-panel" id="pausePanel" hidden>
+      <div class="op-card">
+        <div class="op-kicker">PAUSED</div>
+        <h3>已暂停</h3>
+        <p>鼠标锁定已解除，计时同步冻结。点击继续会重新锁定鼠标，并从 2 秒倒计时重新开始。</p>
+        <div class="op-actions">
+          <button class="btn primary" id="btnResume" type="button">继续测试</button>
+          <button class="btn ghost" id="btnStageQuit" type="button">结束本次测试</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">已复制</div>
+<script>
+/* =====================================================================
+   VAL // SENS LAB  —  单文件实现
+   换算基准：VALORANT yaw = 0.07° / count, FOV 103°, sens 0.1–10.0
+   ===================================================================== */
+(function () {
+'use strict';
+
+/* ---------------- 基础工具 ---------------- */
+var $ = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+var clamp = function (v, a, b) { return v < a ? a : (v > b ? b : v); };
+var round3 = function (v) { return Math.round(v * 1000) / 1000; };
+var f3 = function (v) { return (Math.round(v * 1000) / 1000).toFixed(3); };
+var f2 = function (v) { return (Math.round(v * 100) / 100).toFixed(2); };
+var f1 = function (v) { return (Math.round(v * 10) / 10).toFixed(1); };
+var now = function () { return performance.now(); };
+var DEG = Math.PI / 180;
+
+/* VALORANT 官方换算常量：cm/360 = 2.54 * 360 / (sens * dpi * 0.07) */
+var YAW = 0.07;
+var K360 = 2.54 * 360 / YAW;               /* 13062.857… */
+function cm360Of(sens, dpi) { return K360 / (Math.max(sens, 0.01) * Math.max(dpi, 50)); }
+function sensOfCm(cm, dpi) { return K360 / (Math.max(cm, 1) * Math.max(dpi, 50)); }
+function edpiOf(sens, dpi) { return sens * dpi; }
+
+/* 最小二乘二次拟合：y = a x² + b x + c */
+function solve3(m, v) {
+  var a = [[m[0][0], m[0][1], m[0][2], v[0]], [m[1][0], m[1][1], m[1][2], v[1]], [m[2][0], m[2][1], m[2][2], v[2]]];
+  for (var i = 0; i < 3; i++) {
+    var p = i;
+    for (var r = i + 1; r < 3; r++) if (Math.abs(a[r][i]) > Math.abs(a[p][i])) p = r;
+    if (Math.abs(a[p][i]) < 1e-12) return null;
+    var t = a[i]; a[i] = a[p]; a[p] = t;
+    for (var r2 = i + 1; r2 < 3; r2++) {
+      var f = a[r2][i] / a[i][i];
+      for (var c = i; c < 4; c++) a[r2][c] -= f * a[i][c];
+    }
+  }
+  var x = [0, 0, 0];
+  for (var i3 = 2; i3 >= 0; i3--) {
+    var s = a[i3][3];
+    for (var j = i3 + 1; j < 3; j++) s -= a[i3][j] * x[j];
+    x[i3] = s / a[i3][i3];
+  }
+  return x; /* [c, b, a] order? -> 见下 */
+}
+function fitQuad(pts) {
+  var n = pts.length;
+  if (n < 3) return null;
+  var S1 = 0, S2 = 0, S3 = 0, S4 = 0, T0 = 0, T1 = 0, T2 = 0;
+  for (var i = 0; i < n; i++) {
+    var x = pts[i].x, y = pts[i].y;
+    S1 += x; S2 += x * x; S3 += x * x * x; S4 += x * x * x * x;
+    T0 += y; T1 += y * x; T2 += y * x * x;
+  }
+  var sol = solve3([[S4, S3, S2], [S3, S2, S1], [S2, S1, n]], [T2, T1, T0]);
+  if (!sol) return null;
+  var a = sol[0], b = sol[1], c = sol[2];
+  var mean = T0 / n, ssTot = 0, ssRes = 0;
+  for (var k = 0; k < n; k++) {
+    var yh = a * pts[k].x * pts[k].x + b * pts[k].x + c;
+    ssTot += Math.pow(pts[k].y - mean, 2);
+    ssRes += Math.pow(pts[k].y - yh, 2);
+  }
+  var r2 = ssTot > 1e-9 ? 1 - ssRes / ssTot : 0;
+  var vertex = Math.abs(a) > 1e-9 ? -b / (2 * a) : null;
+  return { a: a, b: b, c: c, r2: r2, vertex: vertex, at: function (x) { return a * x * x + b * x + c; } };
+}
+
+/* ---------------- 状态 ---------------- */
+var STORE_KEY = 'val_sens_lab_v3';
+var S = {
+  dpi: 800, sens: null, pad: 45, hz: 144,
+  grip: 'hybrid', role: 'hybrid', error: 'balanced', pref: 55,
+  runs: { micro: [], flick: [], track: [], turn: [] },
+  history: [],
+  final: null, log: [], conf: 0, syncAt: 0
+};
+
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      dpi: S.dpi, sens: S.sens, pad: S.pad, hz: S.hz,
+      grip: S.grip, role: S.role, error: S.error, pref: S.pref,
+      runs: S.runs, history: S.history, final: S.final, log: S.log, conf: S.conf
+    }));
+  } catch (e) { /* 隐私模式忽略 */ }
+}
+function load() {
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    var d = JSON.parse(raw);
+    if (!d || typeof d !== 'object') return;
+    ['dpi', 'sens', 'pad', 'hz', 'grip', 'role', 'error', 'pref'].forEach(function (k) {
+      if (d[k] !== undefined && d[k] !== null) S[k] = d[k];
+    });
+    if (d.runs && typeof d.runs === 'object') {
+      ['micro', 'flick', 'track', 'turn'].forEach(function (k) {
+        if (Array.isArray(d.runs[k])) S.runs[k] = d.runs[k].slice(-48);
+      });
+    }
+    if (Array.isArray(d.history)) S.history = d.history.slice(-12);
+    if (d.final) S.final = d.final;
+    if (Array.isArray(d.log)) S.log = d.log;
+    if (typeof d.conf === 'number') S.conf = d.conf;
+  } catch (e) { /* ignore */ }
+}
+
+/* ---------------- 基准推导 ---------------- */
+function baseline() {
+  var dpi = clamp(+S.dpi || 800, 100, 32000);
+  var pad = clamp(+S.pad || 45, 10, 200);
+  if (S.sens && S.sens >= 0.1 && S.sens <= 10) {
+    var s0 = clamp(S.sens, 0.1, 10);
+    return {
+      sens: round3(s0), cm: cm360Of(s0, dpi), src: 'current', capped: false,
+      why: '已把你填写的 ' + f3(s0) + ' 作为先验，测试只会在它上下 20% 内做修正。'
+    };
+  }
+  var roleCm = { duelist: 33, hybrid: 38.5, control: 43, sniper: 49 }[S.role] || 38.5;
+  var gripK = { arm: 1.07, hybrid: 1, wrist: 0.92 }[S.grip] || 1;
+  var errK = { over: 1.06, balanced: 1, under: 0.94 }[S.error] || 1;
+  var prefK = 1 + (S.pref - 50) / 100 * 0.18;
+  var cm = roleCm * gripK * errK * prefK;
+  var padMax = Math.max(22, pad * 1.45);
+  var capped = cm > padMax;
+  cm = clamp(cm, 18, padMax);
+  var sens = round3(clamp(sensOfCm(cm, dpi), 0.1, 10));
+  var names = { duelist: '决斗/高频对枪', hybrid: '全能混合位', control: '控场/哨位', sniper: '狙击/精准优先' };
+  var gnames = { arm: '大臂流', hybrid: '手臂+手腕', wrist: '手腕流' };
+  return {
+    sens: sens, cm: cm360Of(sens, dpi), src: 'derived', capped: capped,
+    why: '按 ' + dpi + ' DPI · ' + (gnames[S.grip] || '混合') + ' · ' + (names[S.role] || '混合位') + ' 推导' +
+      (capped ? '，受鼠标垫宽度限制已收紧' : '') + '。这只是起点。'
+  };
+}
+
+/* ---------------- 界面刷新：基准 ---------------- */
+function refreshBaseline() {
+  var b = baseline();
+  S.base = b;
+  $('#baseSens').textContent = f3(b.sens);
+  $('#baseEdpi').textContent = Math.round(edpiOf(b.sens, S.dpi));
+  $('#baseCm').textContent = f1(b.cm);
+  $('#baseTurn').textContent = f1(b.cm / 2) + ' cm';
+  $('#topBase').textContent = f3(b.sens);
+  $('#baseNote').textContent = b.why;
+  $('#baseMarker').style.left = clamp((b.cm - 18) / (62 - 18) * 100, 2, 98) + '%';
+  var tag = $('#liveTag');
+  if (tag) tag.textContent = b.src === 'current' ? '基于现有手感' : '实时计算';
+  return b;
+}
+
+/* ---------------- 复制 / 提示 ---------------- */
+var toastEl = $('#toast');
+var toastTimer = 0;
+function toast(msg) {
+  if (!toastEl) return;
+  toastEl.textContent = msg;
+  toastEl.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { toastEl.classList.remove('on'); }, 1600);
+}
+function copyText(text, okMsg) {
+  var done = function (ok) { toast(ok ? (okMsg || '已复制') : '复制失败，请手动选中复制'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+  } else {
+    done(fallbackCopy(text));
+  }
+}
+function fallbackCopy(text) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.top = '-2000px'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    var ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch (e) { return false; }
+}
+
+/* ---------------- 表单绑定 ---------------- */
+function bindProfile() {
+  var dpi = $('#fDpi'), sens = $('#fSens'), pad = $('#fPad'), hz = $('#fHz');
+  dpi.value = S.dpi; pad.value = S.pad; hz.value = String(S.hz);
+  if (S.sens) sens.value = S.sens;
+
+  dpi.addEventListener('input', function () {
+    var v = parseFloat(dpi.value);
+    if (isFinite(v) && v >= 100 && v <= 32000) { var chg = Math.abs(v - S.dpi) > 1; S.dpi = v; refreshBaseline(); save(); if (chg) renderResults(); }
+  });
+  sens.addEventListener('input', function () {
+    var v = parseFloat(sens.value);
+    if (!sens.value.trim()) { S.sens = null; refreshBaseline(); save(); renderResults(); return; }
+    if (isFinite(v) && v >= 0.1 && v <= 10) { S.sens = v; refreshBaseline(); save(); renderResults(); }
+  });
+  sens.addEventListener('blur', function () {
+    if (!sens.value.trim()) return;
+    var v = parseFloat(sens.value);
+    if (!isFinite(v) || v < 0.1 || v > 10) { sens.value = ''; S.sens = null; refreshBaseline(); save(); }
+  });
+  pad.addEventListener('input', function () {
+    var v = parseFloat(pad.value);
+    if (isFinite(v) && v >= 10 && v <= 200) { S.pad = v; refreshBaseline(); save(); renderResults(); }
+  });
+  hz.addEventListener('change', function () { S.hz = parseInt(hz.value, 10) || 144; save(); });
+
+  $$('.chips[data-group]').forEach(function (group) {
+    var key = group.getAttribute('data-group');
+    $$('.chip', group).forEach(function (chip) {
+      if (chip.getAttribute('data-value') === String(S[key])) chip.classList.add('on');
+      else chip.classList.remove('on');
+      chip.addEventListener('click', function () {
+        $$('.chip', group).forEach(function (c) { c.classList.remove('on'); });
+        chip.classList.add('on');
+        S[key] = chip.getAttribute('data-value');
+        refreshBaseline(); save();
+      });
+    });
+  });
+
+  var pref = $('#fPref'), prefOut = $('#prefOut');
+  pref.value = S.pref;
+  var updPref = function () {
+    var v = S.pref;
+    prefOut.textContent = v < 25 ? '偏快' : v < 45 ? '略快' : v < 60 ? '均衡' : v < 80 ? '略稳' : '偏稳';
+  };
+  pref.addEventListener('input', function () { S.pref = parseInt(pref.value, 10) || 50; updPref(); refreshBaseline(); save(); });
+  updPref();
+}
+
+/* =====================================================================
+   测试舞台：指针锁定 + 球面投影（103° 横向 FOV）
+   ===================================================================== */
+var FOV_H = 103 * DEG;
+var TAN_H = Math.tan(FOV_H / 2);
+var PITCH_LIMIT = 1.30;
+
+/* 固定的目标方向序列（弧度）。同一批轮次共用同一串方向，
+   保证不同灵敏度之间面对的几何难度完全一致，显著降低轮次间方差。 */
+var DIRS = [0.35, 3.49, 1.92, 5.41, 5.85, 2.62, 4.61, 0.87,
+            2.01, 4.20, 6.02, 1.31, 3.02, 5.24, 2.83, 0.62];
+
+var TESTS = {
+  flick: {
+    code: 'TEST A', name: '悬停甩枪',
+    desc: 'Aimlabs 风格的大范围甩枪。目标会出现在你视野周围 9°–29° 的随机方向，准星碰到就命中。',
+    list: [
+      '准星固定在画面正中，移动鼠标转动视角',
+      '把准星移到红圈上即自动命中，不需要点击',
+      '共 12 个目标，每个限时 5 秒，超时算失误'
+    ],
+    count: 12, radius: 3.2, expiry: 5.0,
+    dists: [9, 13, 17, 21, 25, 29, 11, 15, 19, 23, 27, 12],
+    hudMainL: '命中', hudTimeL: '用时', hint: '准星碰到目标即命中 · 不需要点击'
+  },
+  micro: {
+    code: 'TEST B', name: '微目标精准',
+    desc: '小目标快速点选。灵敏度过高会抖、过低会跟不上，是拟合曲线的核心依据。',
+    list: [
+      '目标更小（约 1.7° 半径），出现距离 3°–10°',
+      '每个目标限时 1.8 秒，超时算失误，立刻换下一个',
+      '共 16 个目标，尽量又快又稳'
+    ],
+    count: 16, radius: 1.7, expiry: 1.8,
+    dists: [3, 5, 7, 9, 4, 6, 8, 10, 5, 7, 3, 9, 6, 8, 10, 4],
+    hudMainL: '命中', hudTimeL: '用时', hint: '小目标 · 限时 1.8 秒 · 碰到即命中'
+  },
+  track: {
+    code: 'TEST C', name: '动态追踪',
+    desc: '移动目标持续覆盖。检验跟枪时灵敏度是否稳定、能不能跟上横向位移。',
+    list: [
+      '目标会在视野内做连续左右 / 上下的移动',
+      '尽量让准星一直压在它身上，不需要点击',
+      '持续 12 秒，结束后统计覆盖率与平均偏差'
+    ],
+    count: 1, radius: 2.6, duration: 12,
+    hudMainL: '覆盖', hudTimeL: '剩余', hint: '保持准星压在移动目标上 · 不需要点击'
+  },
+  turn: {
+    code: 'TEST D', name: '180° 转身校准',
+    desc: '目标出现在侧面 128°–175°，检验当前灵敏度能不能一次转到位、实际要扫多少厘米。',
+    list: [
+      '目标会出现在身后或侧后方，跟丢时看屏幕边缘的指示箭头',
+      '准星碰到即命中，共 4 个目标',
+      '每个限时 6 秒；转不过来说明灵敏度偏慢'
+    ],
+    count: 4, radius: 3.4, expiry: 6.0,
+    dists: [128, 152, 175, 140],
+    hudMainL: '命中', hudTimeL: '用时', hint: '大角度转身 · 留意边缘箭头指示'
+  },
+  free: {
+    code: 'FREE PLAY', name: '试枪房',
+    desc: '用当前灵敏度无限练枪。按 - / = 实时微调 ±15%，找最舒服的那一档。',
+    list: [
+      '目标无限刷新，准星碰到即命中',
+      '按 - 减速、= 加速（每次 1%）',
+      '按 Esc 结束并返回结果'
+    ],
+    count: 9999, radius: 3.2, expiry: 0,
+    dists: [8, 12, 16, 20, 24, 10, 14, 18, 22, 26],
+    hudMainL: '命中', hudTimeL: '用时', hint: '无限目标 · - / = 微调 · Esc 结束'
+  }
+};
+
+var Stage = {
+  el: null, wrap: null, cv: null, ctx: null,
+  W: 960, H: 540, dpr: 1, tanV: 1,
+  open: false, phase: 'idle', locked: false, closing: false,
+  yaw: 0, pitch: 0, preYaw: 0, prePitch: 0,
+  sens: 0.35, dpc: 0.07 * 0.35 * DEG, mul: 1,
+  cfg: null, testKey: null, runT: 0, cdStart: 0, cdLen: 3, cdLeft: 0, runStart: 0,
+  run: null, raf: 0, lastFrame: 0, hudTimer: 0,
+  effects: [], pending: null, lastMetrics: null, introExtra: null,
+  muted: false, bgGrad: null,
+
+  init: function () {
+    var self = this;
+    this.el = $('#stage');
+    this.wrap = $('#stageWrap');
+    this.cv = $('#cv');
+    this.ctx = this.cv.getContext('2d', { alpha: false });
+    this.tanV = TAN_H * 9 / 16;
+
+    window.addEventListener('resize', function () { if (self.open) self.resize(); });
+
+    document.addEventListener('mousemove', function (e) { self.onMove(e); }, { passive: true });
+    document.addEventListener('pointerlockchange', function () {
+      var has = document.pointerLockElement === self.cv;
+      self.locked = has;
+      if (has) self.ignoreMoves = 2;
+      if (!has && !self.closing && (self.phase === 'run' || self.phase === 'countdown')) self.pause();
+    });
+    document.addEventListener('pointerlockerror', function () {
+      self.introError('浏览器拒绝了鼠标锁定。请用 Chrome / Edge 打开本文件，并点击页面空白处后再试。');
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!self.open) return;
+      if (e.key === '-' || e.key === '_') { self.adjustMul(-0.01); e.preventDefault(); }
+      if (e.key === '=' || e.key === '+') { self.adjustMul(0.01); e.preventDefault(); }
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && self.open && (self.phase === 'run' || self.phase === 'countdown')) self.pause();
+    });
+    this.cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    this.cv.addEventListener('mousedown', function (e) { e.preventDefault(); });
+
+    $('#btnStartTest').addEventListener('click', function () { self.startFlow(); });
+    $('#btnCloseStage').addEventListener('click', function () { self.abort(); });
+    $('#btnStageDone').addEventListener('click', function () { self.doneResult(); });
+    $('#btnStageAgain').addEventListener('click', function () { self.again(); });
+    $('#btnResume').addEventListener('click', function () { self.resume(); });
+    $('#btnStageQuit').addEventListener('click', function () { self.abort(); });
+  },
+
+  /* ---------- 尺寸 ---------- */
+  resize: function () {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var padx = Math.min(28, vw * 0.03), pady = Math.min(28, vh * 0.03);
+    var w = Math.max(320, vw - padx * 2), h = Math.max(180, vh - pady * 2);
+    if (w / h > 16 / 9) w = h * 16 / 9; else h = w * 9 / 16;
+    this.W = Math.round(w); this.H = Math.round(h);
+    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.cv.style.width = this.W + 'px';
+    this.cv.style.height = this.H + 'px';
+    this.cv.width = Math.round(this.W * this.dpr);
+    this.cv.height = Math.round(this.H * this.dpr);
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.wrap.style.width = this.W + 'px';
+    this.wrap.style.height = this.H + 'px';
+    this.tanV = TAN_H * this.H / this.W;
+    var g = this.ctx.createRadialGradient(this.W / 2, this.H * 0.46, 10, this.W / 2, this.H / 2, Math.max(this.W, this.H) * 0.75);
+    g.addColorStop(0, '#0d141b');
+    g.addColorStop(0.55, '#0a1016');
+    g.addColorStop(1, '#05080b');
+    this.bgGrad = g;
+  },
+
+  /* ---------- 打开 / 关闭 ---------- */
+  makeCfg: function (key, count) {
+    var base = TESTS[key], c = {}, k;
+    for (k in base) if (Object.prototype.hasOwnProperty.call(base, k)) c[k] = base[k];
+    c.key = key;
+    if (count) c.count = count;
+    return c;
+  },
+  openStage: function (key, sens, opts) {
+    opts = opts || {};
+    this.testKey = key;
+    this.cfg = this.makeCfg(key, opts.count);
+    this.sens = sens;
+    this.mul = 1;
+    this.dpc = YAW * sens * DEG;
+    this.introExtra = opts;
+    this.open = true;
+    this.closing = false;
+    this.phase = 'intro';
+    this.el.hidden = false;
+    document.body.style.overflow = 'hidden';
+    this.resize();
+    this.showIntro();
+    this.startLoop();
+  },
+  closeStage: function () {
+    this.closing = true;
+    this.open = false;
+    this.phase = 'idle';
+    cancelAnimationFrame(this.raf); this.raf = 0;
+    clearInterval(this.hudTimer); this.hudTimer = 0;
+    this.exitLock();
+    this.el.hidden = true;
+    document.body.style.overflow = '';
+    setTimeout(function () { Stage.closing = false; }, 200);
+  },
+  exitLock: function () {
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) { }
+    this.locked = false;
+  },
+
+  showIntro: function () {
+    var c = this.cfg, ex = this.introExtra || {};
+    $('#hudName').textContent = ex.title || c.name;
+    $('#hudSens').textContent = 'SENS ' + f3(this.sens) + ' · ' + S.dpi + ' DPI';
+    $('#introKicker').textContent = ex.kicker || c.code;
+    $('#introTitle').textContent = ex.title || c.name;
+    $('#introDesc').textContent = c.desc;
+    var ul = $('#introList');
+    ul.innerHTML = '';
+    c.list.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+    if (ex.count && ex.count < c.count) {
+      var li2 = document.createElement('li');
+      li2.textContent = '本轮只跑 ' + ex.count + ' 个目标';
+      ul.appendChild(li2);
+    }
+    $('#introErr').classList.remove('show');
+    $('#introPanel').hidden = false;
+    $('#resultPanel').hidden = true;
+    $('#pausePanel').hidden = true;
+    $('#cdBox').style.display = 'none';
+    this.resetRunState();
+    this.startLoop();
+  },
+
+  resetRunState: function () {
+    this.yaw = 0; this.pitch = 0; this.preYaw = 0; this.prePitch = 0;
+    this.runT = 0; this.cdLeft = 0;
+    this.effects = [];
+    this.run = {
+      count: this.cfg.count, hits: 0, misses: 0, records: [],
+      target: null, spawned: 0, path: 0, lastYaw: 0, lastPitch: 0,
+      onTime: 0, totalT: 0, errSum: 0, loss: 0, offSince: -1,
+      track: null, mul: 1
+    };
+  },
+
+  /* ---------- 开始流程 ---------- */
+  startFlow: function () {
+    var self = this;
+    this.introError('');
+    var btn = $('#btnStartTest');
+    btn.disabled = true; btn.textContent = '锁定鼠标中…';
+    this.lockPointer().then(function (ok) {
+      btn.disabled = false; btn.textContent = '开始测试';
+      if (!ok) {
+        self.introError('鼠标锁定失败。请确认：① 使用 Chrome / Edge 桌面版；② 本页在顶层窗口而不是 iframe 小窗里；③ 点击页面后再开始。');
+        return;
+      }
+      self.beginCountdown(3);
+    });
+  },
+  beginCountdown: function (sec) {
+    this.phase = 'countdown';
+    this.cdStart = now();
+    this.cdLen = sec || 3;
+    this.cdLeft = this.cdLen;
+    $('#introPanel').hidden = true;
+    $('#pausePanel').hidden = true;
+    $('#resultPanel').hidden = true;
+    $('#cdBox').style.display = '';
+    $('#cdNum').textContent = Math.ceil(this.cdLeft);
+    this.popCd();
+  },
+  beginRun: function (t) {
+    this.resetRunState();
+    this.run.mul = this.mul;
+    this.phase = 'run';
+    this.runStart = t;
+    this.runT = 0;
+    $('#cdBox').style.display = 'none';
+    this.effects = [];
+    var cfg = this.cfg;
+    $('#hudMainL').textContent = cfg.hudMainL || '命中';
+    $('#hudTimeL').textContent = cfg.hudTimeL || '用时';
+    $('#hudHint').textContent = cfg.hint;
+    if (cfg.duration) this.initTrack();
+    else this.spawnTarget();
+    this.updateHud(true);
+  },
+
+  /* ---------- 指针锁定 ---------- */
+  lockPointer: function () {
+    var el = this.cv, self = this;
+    return new Promise(function (resolve) {
+      var settled = false, timer = 0;
+      function finish(ok) {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        document.removeEventListener('pointerlockchange', onChange);
+        document.removeEventListener('pointerlockerror', onErr);
+        self.locked = document.pointerLockElement === el;
+        resolve(ok);
+      }
+      function onChange() { if (document.pointerLockElement === el) finish(true); }
+      function onErr() { finish(false); }
+      document.addEventListener('pointerlockchange', onChange);
+      document.addEventListener('pointerlockerror', onErr);
+      timer = setTimeout(function () { finish(document.pointerLockElement === el); }, 1400);
+      var req = null;
+      try { req = el.requestPointerLock({ unadjustedMovement: true }); } catch (e) { req = null; }
+      if (req && typeof req.then === 'function') {
+        req.then(function () { finish(true); }, function () {
+          if (settled) return;
+          try {
+            var p2 = el.requestPointerLock();
+            if (p2 && typeof p2.then === 'function') { p2.then(function () { finish(true); }, function () { finish(false); }); }
+          } catch (e2) { }
+          setTimeout(function () { finish(document.pointerLockElement === el); }, 500);
+        });
+      } else if (!req) {
+        try { el.requestPointerLock(); } catch (e3) { }
+      }
+    });
+  },
+
+  /* ---------- 输入 ---------- */
+  onMove: function (e) {
+    if (!this.locked || this.phase !== 'run') return;
+    var mx = e.movementX || 0, my = e.movementY || 0;
+    if (!mx && !my) return;
+    if (this.ignoreMoves > 0) {
+      this.ignoreMoves--;
+      if (Math.abs(mx) > 400 || Math.abs(my) > 400) return; /* 丢弃锁定瞬间的跳变 */
+    }
+    mx = clamp(mx, -3000, 3000); my = clamp(my, -3000, 3000);
+    this.yaw += mx * this.dpc * this.mul;
+    this.pitch = clamp(this.pitch - my * this.dpc * this.mul, -PITCH_LIMIT, PITCH_LIMIT);
+  },
+  adjustMul: function (d) {
+    if (this.testKey !== 'free' || this.phase !== 'run') return;
+    this.mul = clamp(this.mul + d, 0.85, 1.15);
+    this.run.mul = this.mul;
+    toast('试枪灵敏度 ' + f3(this.sens * this.mul) + '（' + (this.mul > 1 ? '+' : '') + Math.round((this.mul - 1) * 100) + '%）');
+    this.updateHud(true);
+  },
+
+  /* ---------- 时钟 ---------- */
+  startLoop: function () {
+    var self = this;
+    if (!this.raf) {
+      this.lastFrame = 0;
+      var frame = function (ts) {
+        if (!self.open) { self.raf = 0; return; }
+        self.raf = requestAnimationFrame(frame);
+        var dt = self.lastFrame ? Math.min((ts - self.lastFrame) / 1000, 0.05) : 0.016;
+        self.lastFrame = ts;
+        self.tick();
+        if (self.phase === 'run') self.step(dt);
+        self.render();
+      };
+      this.raf = requestAnimationFrame(frame);
+    }
+    if (!this.hudTimer) {
+      /* 看门狗：即使 rAF 被节流，倒计时也必须继续走 */
+      this.hudTimer = setInterval(function () {
+        if (!Stage.open) return;
+        Stage.tick();
+        Stage.updateHud(false);
+      }, 100);
+    }
+  },
+  tick: function () {
+    var t = now();
+    if (this.phase === 'countdown') {
+      var el = (t - this.cdStart) / 1000;
+      this.cdLeft = Math.max(0, this.cdLen - el);
+      if (el >= this.cdLen) this.beginRun(t);
+    } else if (this.phase === 'run') {
+      this.runT = (t - this.runStart) / 1000;
+      if (this.cfg.duration && this.runT >= this.cfg.duration) this.finishRun();
+    }
+  },
+
+  /* ---------- 目标 ---------- */
+  spawnTarget: function () {
+    var r = this.run, cfg = this.cfg;
+    if (!r || r.hits + r.misses >= r.count) return;
+    var idx = r.spawned;
+    var dist = cfg.dists[idx % cfg.dists.length] * DEG;
+    var ty, tp;
+    if (cfg.key === 'turn') {
+      var side = (idx % 2 === 0) ? 1 : -1;
+      ty = this.yaw + side * dist;
+      tp = clamp(this.pitch * 0.4 + (idx % 3 - 1) * 0.05, -0.55, 0.55);
+    } else {
+      var a = DIRS[idx % DIRS.length];
+      ty = this.yaw + Math.cos(a) * dist;
+      tp = this.pitch + Math.sin(a) * dist * 0.66;
+      tp = clamp(tp, -0.62, 0.62);
+    }
+    r.target = {
+      yaw: ty, pitch: tp, r: cfg.radius * DEG,
+      spawnT: this.runT, dist: dist, born: now()
+    };
+    r.spawned++;
+    r.path = 0;
+    r.lastYaw = this.yaw; r.lastPitch = this.pitch;
+    this.preYaw = this.yaw; this.prePitch = this.pitch;
+  },
+
+  hitTarget: function () {
+    var r = this.run, t = r.target;
+    if (!t) return;
+    var dt = Math.max(0.001, r.t - t.spawnT);
+    var rec = {
+      miss: false, dist: t.dist, t: dt * 1000,
+      path: Math.max(r.path, t.dist),
+      eff: clamp(t.dist / Math.max(r.path, 1e-4), 0, 1)
+    };
+    r.records.push(rec);
+    r.hits++;
+    this.addEffect(t.yaw, t.pitch, 'hit');
+    beep(760, 0.05, 0.035);
+    r.target = null;
+    if (r.hits + r.misses >= r.count) { this.finishRun(); return; }
+    this.spawnTarget();
+  },
+  missTarget: function () {
+    var r = this.run, t = r.target;
+    if (!t) return;
+    r.records.push({ miss: true, dist: t.dist, t: this.cfg.expiry * 1000, path: 0, eff: 0 });
+    r.misses++;
+    this.addEffect(t.yaw, t.pitch, 'miss');
+    beep(200, 0.07, 0.03);
+    r.target = null;
+    if (r.hits + r.misses >= r.count) { this.finishRun(); return; }
+    this.spawnTarget();
+  },
+
+  addEffect: function (y, p, type) {
+    this.effects.push({ yaw: y, pitch: p, t: now(), type: type });
+    if (this.effects.length > 24) this.effects.shift();
+  },
+
+  /* ---------- 单帧逻辑 ---------- */
+  step: function (dt) {
+    var r = this.run;
+    if (!r) return;
+    r.t = this.runT;
+    var dY = this.yaw - this.preYaw, dP = this.pitch - this.prePitch;
+    if (this.cfg.duration) {
+      this.stepTrack(dt);
+    } else if (this.testKey === 'free') {
+      r.path += Math.sqrt(dY * dY + dP * dP);
+      if (r.target) {
+        var d = this.segDist(r.target);
+        if (d <= r.target.r) this.freeHit();
+      }
+    } else {
+      r.path += Math.sqrt(dY * dY + dP * dP);
+      if (r.target) {
+        var d2 = this.segDist(r.target);
+        if (d2 <= r.target.r) this.hitTarget();
+        else if (this.cfg.expiry && this.runT - r.target.spawnT > this.cfg.expiry) this.missTarget();
+      }
+    }
+    this.preYaw = this.yaw; this.prePitch = this.pitch;
+  },
+  segDist: function (t) {
+    var k = Math.cos(t.pitch);
+    var ax = (this.preYaw - t.yaw) * k, ay = this.prePitch - t.pitch;
+    var bx = (this.yaw - t.yaw) * k, by = this.pitch - t.pitch;
+    var vx = bx - ax, vy = by - ay;
+    var L = vx * vx + vy * vy;
+    var s = L > 1e-12 ? -(ax * vx + ay * vy) / L : 0;
+    s = clamp(s, 0, 1);
+    var x = ax + vx * s, y = ay + vy * s;
+    return Math.sqrt(x * x + y * y);
+  },
+  freeHit: function () {
+    var r = this.run, t = r.target;
+    if (!t) return;
+    r.hits++;
+    this.addEffect(t.yaw, t.pitch, 'hit');
+    beep(760, 0.05, 0.035);
+    r.target = null;
+    this.spawnTarget();
+  },
+
+  /* ---------- 追踪 ---------- */
+  initTrack: function () {
+    var d = 9 * DEG;
+    this.run.track = {
+      ax: this.yaw, ap: this.pitch,
+      w1: 1.15 + Math.random() * 0.35,
+      w2: 1.6 + Math.random() * 0.5,
+      p1: Math.random() * 6.28, p2: Math.random() * 6.28,
+      ampY: d * (0.7 + Math.random() * 0.5),
+      ampP: d * 0.42,
+      yaw: this.yaw, pitch: this.pitch, trail: []
+    };
+  },
+  stepTrack: function (dt) {
+    var r = this.run, tr = r.track;
+    if (!tr) return;
+    var t = this.runT;
+    tr.yaw = tr.ax + tr.ampY * Math.sin(tr.w1 * t + tr.p1) + 0.35 * tr.ampY * Math.sin(tr.w1 * 2.3 * t + tr.p2);
+    tr.pitch = clamp(tr.ap + tr.ampP * Math.sin(tr.w2 * t + tr.p2), -0.9, 0.9);
+    tr.trail.push({ yaw: tr.yaw, pitch: tr.pitch, t: now() });
+    if (tr.trail.length > 26) tr.trail.shift();
+    var tgt = { yaw: tr.yaw, pitch: tr.pitch, r: this.cfg.radius * DEG };
+    var d = this.segDist(tgt);
+    r.totalT += dt;
+    r.errSum += d * dt;
+    if (d <= tgt.r) {
+      r.onTime += dt;
+      if (r.offSince >= 0) { if (this.runT - r.offSince > 0.3) r.loss++; r.offSince = -1; }
+    } else if (r.offSince < 0) r.offSince = this.runT;
+  },
+
+  /* ---------- 结束 ---------- */
+  finishRun: function () {
+    if (this.phase !== 'run') return;
+    this.phase = 'result';
+    if (!this.autoMode) this.exitLock();
+    var m = this.computeMetrics();
+    this.lastMetrics = m;
+    this.showResultPanel(m);
+    if (this.onRound) { try { this.onRound(m); } catch (e) { } }
+    if (this.pending) { var p = this.pending; this.pending = null; p(m); }
+  },
+  computeMetrics: function () {
+    var r = this.run, cfg = this.cfg, self = this;
+    if (cfg.duration) {
+      var onPct = r.totalT > 0 ? r.onTime / r.totalT : 0;
+      var meanErr = r.totalT > 0 ? (r.errSum / r.totalT) / DEG : 0;
+      return {
+        test: 'track', name: cfg.name, sens: this.sens, at: Date.now(),
+        onPct: onPct, meanErr: meanErr, loss: r.loss,
+        score: onPct * (1 - clamp(meanErr / 9, 0, 0.35)),
+        duration: this.runT
+      };
+    }
+    if (this.testKey === 'free') {
+      return { test: 'free', name: cfg.name, sens: this.sens * this.mul, mul: this.mul, hits: r.hits, at: Date.now() };
+    }
+    var hits = r.hits, count = r.count, records = r.records;
+    var totalT = 0, effSum = 0, effN = 0, times = [];
+    records.forEach(function (x) {
+      totalT += x.t / 1000;
+      if (!x.miss) { effSum += x.eff; effN++; times.push(x.t); }
+    });
+    times.sort(function (a, b) { return a - b; });
+    var medT = 0;
+    if (times.length) {
+      medT = times.length % 2 ? times[(times.length - 1) / 2]
+        : (times[times.length / 2 - 1] + times[times.length / 2]) / 2;
+    } else {
+      medT = (cfg.expiry || 1.8) * 1000;
+    }
+    var acc = count ? hits / count : 0;
+    var tps = hits / Math.max(totalT, 0.3);
+    var eff = effN ? effSum / effN : 0;
+    var meanT = times.length ? times.reduce(function (a, b) { return a + b; }, 0) / times.length : medT;
+    return {
+      test: this.testKey, name: cfg.name, sens: this.sens, at: Date.now(),
+      hits: hits, misses: r.misses, count: count, acc: acc, tps: tps, eff: eff,
+      meanT: meanT, medT: medT, totalT: totalT,
+      /* 中位数用时对单个失误/超时目标不敏感，轮次间方差远小于“总用时”口径 */
+      score: acc * (1000 / Math.max(medT, 120)) * (0.85 + 0.15 * eff)
+    };
+  },
+  showResultPanel: function (m) {
+    $('#introPanel').hidden = true;
+    $('#pausePanel').hidden = true;
+    $('#resultPanel').hidden = false;
+    $('#resTitle').textContent = m.name + ' · 完成' + (this.autoMode ? ' · 自动进入下一轮…' : '');
+    var actions = $('#resultPanel').querySelector('.op-actions');
+    if (actions) actions.style.display = this.autoMode ? 'none' : '';
+    var box = $('#resMetrics');
+    box.innerHTML = '';
+    var rows = [];
+    if (m.test === 'track') {
+      rows = [
+        ['覆盖率', Math.round(m.onPct * 100) + '%'],
+        ['平均偏差', f2(m.meanErr) + '°'],
+        ['丢失次数', String(m.loss)],
+        ['得分', f2(m.score)]
+      ];
+    } else if (m.test === 'free') {
+      rows = [['命中', String(m.hits)], ['最终灵敏度', f3(m.sens)], ['相对倍率', (m.mul > 1 ? '+' : '') + Math.round((m.mul - 1) * 100) + '%'], ['得分', '—']];
+    } else {
+      rows = [
+        ['命中率', Math.round(m.acc * 100) + '%'],
+        ['平均命中用时', Math.round(m.meanT) + ' ms'],
+        ['路径效率', Math.round(m.eff * 100) + '%'],
+        ['得分', f2(m.score)]
+      ];
+    }
+    rows.forEach(function (row) {
+      var d = document.createElement('div');
+      d.innerHTML = '<span>' + row[0] + '</span><b>' + row[1] + '</b>';
+      box.appendChild(d);
+    });
+    $('#btnStageAgain').textContent = this.testKey === 'free' ? '再进一次' : '再测一轮';
+  },
+
+  /* ---------- 暂停 / 继续 / 中止 ---------- */
+  pause: function () {
+    if (this.phase !== 'run' && this.phase !== 'countdown') return;
+    this.phase = 'paused';
+    this.exitLock();
+    $('#pausePanel').hidden = false;
+  },
+  resume: function () {
+    var self = this;
+    $('#pausePanel').hidden = true;
+    this.lockPointer().then(function (ok) {
+      if (!ok) { $('#pausePanel').hidden = false; return; }
+      self.beginCountdown(2);
+    });
+  },
+  abort: function () {
+    var m = null;
+    if (this.testKey === 'free' && this.run) {
+      m = {
+        test: 'free', name: this.cfg.name, sens: this.sens * this.mul,
+        mul: this.mul, hits: this.run.hits, at: Date.now()
+      };
+    }
+    if (this.pending) { var p = this.pending; this.pending = null; p(m); }
+    this.closeStage();
+  },
+  doneResult: function () {
+    this.closeStage();
+  },
+  again: function () {
+    this.phase = 'intro';
+    this.showIntro();
+    this.startFlow();
+  },
+
+  /* ---------- Run API ---------- */
+  runTest: function (key, sens, opts) {
+    var self = this;
+    opts = opts || {};
+    this.autoMode = !!opts.auto;
+    this.onRound = opts.onRound || null;
+    return new Promise(function (resolve) {
+      self.pending = resolve;
+      self.openStage(key, sens, opts);
+    });
+  },
+
+  /* 自动流程内继续下一轮：不放开鼠标锁定，省去再次点击 */
+  nextRound: function (key, sens, count) {
+    var self = this;
+    return new Promise(function (resolve) {
+      self.pending = resolve;
+      if (document.pointerLockElement !== self.cv) {
+        self.openStage(key, sens, { count: count, auto: true });
+        return;
+      }
+      self.testKey = key;
+      self.cfg = self.makeCfg(key, count);
+      self.sens = sens;
+      self.dpc = YAW * sens * DEG;
+      self.introExtra = { auto: true };
+      $('#introPanel').hidden = true;
+      $('#resultPanel').hidden = true;
+      $('#pausePanel').hidden = true;
+      $('#hudName').textContent = self.cfg.name;
+      $('#hudSens').textContent = 'SENS ' + f3(sens) + ' · ' + S.dpi + ' DPI';
+      self.beginCountdown(3);
+    });
+  },
+
+  /* ---------- HUD ---------- */
+  updateHud: function (force) {
+    var r = this.run;
+    if (!r) return;
+    var main = $('#hudMain'), time = $('#hudTime'), prog = $('#progBar');
+    var mainL = $('#hudMainL'), timeL = $('#hudTimeL');
+    var mainTxt, timeTxt, pct = 0;
+
+    if (this.phase === 'countdown') {
+      var n = Math.max(1, Math.ceil(this.cdLeft));
+      var cd = $('#cdNum');
+      var txt = String(n);
+      if (cd.textContent !== txt) { cd.textContent = txt; this.popCd(); }
+      $('#cdHint').textContent = this.pendingResume ? '继续' : '准备瞄准';
+      pct = 1 - this.cdLeft / Math.max(this.cdLen, 0.01);
+      mainTxt = r.hits + ' / ' + r.count;
+      timeTxt = '0.0';
+    } else if (this.phase === 'run') {
+      $('#cdBox').style.display = 'none';
+      this.pendingResume = false;
+      if (this.cfg.duration) {
+        mainTxt = Math.round((r.totalT > 0 ? r.onTime / r.totalT : 0) * 100) + '%';
+        timeTxt = f1(Math.max(0, this.cfg.duration - this.runT));
+        pct = clamp(this.runT / this.cfg.duration, 0, 1);
+        mainL.textContent = '覆盖';
+        timeL.textContent = '剩余';
+      } else if (this.testKey === 'free') {
+        mainTxt = String(r.hits);
+        timeTxt = f3(this.sens * this.mul);
+        pct = (r.hits % 1) ? 0 : 0;
+        mainL.textContent = '命中';
+        timeL.textContent = 'SENS';
+        $('#hudHint').textContent = '微调 ' + (this.mul > 1 ? '+' : '') + Math.round((this.mul - 1) * 100) + '% · - / = 调整 · Esc 结束';
+      } else {
+        mainTxt = r.hits + ' / ' + r.count;
+        timeTxt = f1(this.runT);
+        pct = (r.hits + r.misses) / Math.max(r.count, 1);
+        mainL.textContent = '命中';
+        timeL.textContent = '用时';
+        $('#hudHint').textContent = r.misses ? ('失误 ' + r.misses + ' · ' + this.cfg.hint) : this.cfg.hint;
+      }
+    } else {
+      mainTxt = main.textContent;
+      timeTxt = time.textContent;
+    }
+    if (force || main.textContent !== mainTxt) main.textContent = mainTxt;
+    if (force || time.textContent !== timeTxt) time.textContent = timeTxt;
+    prog.style.width = clamp(pct * 100, 0, 100) + '%';
+  },
+  popCd: function () {
+    var el = $('#cdNum');
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+  },
+  introError: function (msg) {
+    var e = $('#introErr');
+    if (!msg) { e.classList.remove('show'); e.textContent = ''; return; }
+    e.textContent = msg;
+    e.classList.add('show');
+  },
+
+  /* ---------- 渲染 ---------- */
+  project: function (ty, tp, out) {
+    var cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+    var cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+    var fx = cp * sy, fy = sp, fz = cp * cy;
+    var rx = cy, rz = -sy;
+    var ux = -fy * sy, uy = fz * cy + fx * sy, uz = -fy * cy;
+    var dy = Math.cos(tp);
+    var dx = dy * Math.sin(ty), dyy = Math.sin(tp), dz = dy * Math.cos(ty);
+    var zc = dx * fx + dyy * fy + dz * fz;
+    if (zc <= 0.06) return false;
+    var xc = dx * rx + dz * rz;
+    var yc = dx * ux + dyy * uy + dz * uz;
+    out.x = this.W / 2 + (xc / zc) / TAN_H * (this.W / 2);
+    out.y = this.H / 2 - (yc / zc) / this.tanV * (this.H / 2);
+    out.z = zc;
+    return true;
+  },
+  render: function () {
+    var ctx = this.ctx, W = this.W, H = this.H;
+    if (!ctx) return;
+    ctx.fillStyle = this.bgGrad || '#080c11';
+    ctx.fillRect(0, 0, W, H);
+
+    this.drawGrid();
+
+    if (this.phase === 'run') {
+      if (this.cfg.duration) this.drawTrack();
+      else if (this.run && this.run.target) this.drawTarget(this.run.target);
+      this.drawEffects();
+    }
+
+    this.drawCrosshair();
+    this.drawVignette();
+    this.updateHud(false);
+  },
+
+  drawGrid: function () {
+    var ctx = this.ctx, p = { x: 0, y: 0 };
+    function seg(list) {
+      if (list.length < 4) return;
+      ctx.moveTo(list[0], list[1]);
+      for (var i = 2; i < list.length; i += 2) ctx.lineTo(list[i], list[i + 1]);
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.042)';
+    ctx.beginPath();
+    var stepY = 8 * DEG, stepP = 8 * DEG, list, list2;
+    var y0 = Math.floor((this.yaw - 62 * DEG) / stepY) * stepY;
+    for (var y = y0; y <= this.yaw + 62 * DEG; y += stepY) {
+      list = [];
+      for (var pp = -46 * DEG; pp <= 46 * DEG; pp += 4 * DEG) {
+        if (this.project(y, pp, p)) list.push(p.x, p.y); else { seg(list); list = []; }
+      }
+      seg(list);
+    }
+    var p0 = Math.floor((this.pitch - 44 * DEG) / stepP) * stepP;
+    for (var q = p0; q <= this.pitch + 44 * DEG; q += stepP) {
+      list2 = [];
+      for (var yy = this.yaw - 58 * DEG; yy <= this.yaw + 58 * DEG; yy += 4 * DEG) {
+        if (this.project(yy, q, p)) list2.push(p.x, p.y); else { seg(list2); list2 = []; }
+      }
+      seg(list2);
+    }
+    ctx.stroke();
+    /* 地平线 */
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,70,85,0.14)';
+    list = [];
+    for (var hy = this.yaw - 55 * DEG; hy <= this.yaw + 55 * DEG; hy += 2 * DEG) {
+      if (this.project(hy, 0, p)) list.push(p.x, p.y); else { seg(list); list = []; }
+    }
+    seg(list);
+    ctx.stroke();
+  },
+
+  drawTarget: function (t, ghost) {
+    var ctx = this.ctx, p = { x: 0, y: 0 };
+    if (!this.project(t.yaw, t.pitch, p)) { this.drawArrow(t); return; }
+    var scale = Math.min(this.W, this.H) / 540;
+    var r = Math.max(4, (this.W / 2) * Math.tan(t.r) / (TAN_H * Math.max(p.z, 0.35)));
+    if (p.x < -r * 2 || p.x > this.W + r * 2 || p.y < -r * 2 || p.y > this.H + r * 2) { this.drawArrow(t); return; }
+
+    var g = ctx.createRadialGradient(p.x, p.y, r * 0.15, p.x, p.y, r);
+    g.addColorStop(0, 'rgba(255,70,85,0.34)');
+    g.addColorStop(1, 'rgba(255,70,85,0.05)');
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = Math.max(1.5, 2 * scale);
+    ctx.strokeStyle = ghost ? 'rgba(255,70,85,0.55)' : '#ff4655';
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.5, r * 0.12), 0, Math.PI * 2);
+    ctx.fillStyle = '#ffdfe2'; ctx.fill();
+
+    /* 四角刻度 */
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    var tick = r * 0.22;
+    [-1, 1].forEach(function (sx) {
+      ctx.beginPath(); ctx.moveTo(p.x + sx * r * 1.06, p.y); ctx.lineTo(p.x + sx * (r * 1.06 + tick), p.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x, p.y + sx * r * 1.06); ctx.lineTo(p.x, p.y + sx * (r * 1.06 + tick)); ctx.stroke();
+    });
+
+    /* 限时环 */
+    if (this.cfg.expiry && this.run && this.run.target === t && t.spawnT !== undefined) {
+      var left = 1 - (this.runT - t.spawnT) / this.cfg.expiry;
+      if (left < 1 && left > 0) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r * 1.28, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(left, 0, 1));
+        ctx.strokeStyle = left < 0.35 ? 'rgba(255,70,85,0.9)' : 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = Math.max(1.5, 2 * scale);
+        ctx.stroke();
+      }
+    }
+  },
+
+  drawTrack: function () {
+    var tr = this.run && this.run.track;
+    if (!tr) return;
+    var ctx = this.ctx, p = { x: 0, y: 0 };
+    /* 轨迹 */
+    for (var i = 0; i < tr.trail.length; i++) {
+      var q = tr.trail[i];
+      if (!this.project(q.yaw, q.pitch, p)) continue;
+      var a = i / tr.trail.length;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2.5 * a, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,70,85,' + (a * 0.28).toFixed(3) + ')';
+      ctx.fill();
+    }
+    this.drawTarget({ yaw: tr.yaw, pitch: tr.pitch, r: this.cfg.radius * DEG });
+  },
+
+  drawArrow: function (t) {
+    var ctx = this.ctx;
+    var dy = t.yaw - this.yaw, dp = t.pitch - this.pitch;
+    var k = Math.cos(t.pitch);
+    var dx = dy * k;
+    var ang = Math.atan2(-dp, dx);
+    var R = Math.min(this.W, this.H) * 0.42;
+    var cx = this.W / 2 + Math.cos(ang) * R;
+    var cy = this.H / 2 + Math.sin(ang) * R;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(12, 0); ctx.lineTo(-8, 7); ctx.lineTo(-8, -7); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,70,85,0.85)';
+    ctx.fill();
+    ctx.restore();
+  },
+
+  drawEffects: function () {
+    var ctx = this.ctx, t = now();
+    for (var i = this.effects.length - 1; i >= 0; i--) {
+      var e = this.effects[i];
+      var age = (t - e.t) / 380;
+      if (age >= 1) { this.effects.splice(i, 1); continue; }
+      var p = { x: 0, y: 0 };
+      if (!this.project(e.yaw, e.pitch, p)) continue;
+      var rr = 8 + age * 46;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+      ctx.strokeStyle = e.type === 'hit'
+        ? 'rgba(56,232,192,' + (1 - age) * 0.8 + ')'
+        : 'rgba(255,70,85,' + (1 - age) * 0.55 + ')';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  },
+
+  drawCrosshair: function () {
+    var ctx = this.ctx, cx = this.W / 2, cy = this.H / 2;
+    var s = clamp(Math.min(this.W, this.H) / 540, 0.75, 2.2);
+    var gap = 5 * s, len = 9 * s, th = Math.max(1, 1.6 * s);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth = th + 2;
+    this.crossPath(cx, cy, gap, len, th + 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#3dffd0';
+    ctx.lineWidth = th;
+    this.crossPath(cx, cy, gap, len, th);
+    ctx.stroke();
+    ctx.fillStyle = '#3dffd0';
+    ctx.fillRect(cx - th / 2, cy - th / 2, th, th);
+    ctx.restore();
+  },
+  crossPath: function (cx, cy, gap, len, th) {
+    var ctx = this.ctx;
+    ctx.lineWidth = th;
+    ctx.beginPath();
+    ctx.moveTo(cx - gap - len, cy); ctx.lineTo(cx - gap, cy);
+    ctx.moveTo(cx + gap, cy); ctx.lineTo(cx + gap + len, cy);
+    ctx.moveTo(cx, cy - gap - len); ctx.lineTo(cx, cy - gap);
+    ctx.moveTo(cx, cy + gap); ctx.lineTo(cx, cy + gap + len);
+    ctx.stroke();
+  },
+  drawVignette: function () {
+    var ctx = this.ctx, W = this.W, H = this.H;
+    var g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.78);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+};
+
+/* 音效 */
+var AC = null;
+function beep(freq, dur, vol) {
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'triangle';
+    o.frequency.value = freq;
+    g.gain.value = vol || 0.03;
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + (dur || 0.06));
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + (dur || 0.06));
+  } catch (e) { }
+}
+
+/* =====================================================================
+   记录 / 分析
+   ===================================================================== */
+var SCORE_VERSION = 2;
+
+function recordRun(m) {
+  if (!m || m.test === 'free') return;
+  var key = m.test;
+  if (!S.runs[key]) S.runs[key] = [];
+  S.runs[key].push({
+    test: key, sens: round3(m.sens), at: m.at || Date.now(),
+    sv: SCORE_VERSION, dpi: clamp(+S.dpi || 800, 100, 32000),
+    score: m.score || 0, acc: m.acc || 0, tps: m.tps || 0, eff: m.eff || 0,
+    meanT: m.meanT || 0, medT: m.medT || 0, hits: m.hits || 0, misses: m.misses || 0,
+    count: m.count || 0, onPct: m.onPct || 0, meanErr: m.meanErr || 0, loss: m.loss || 0
+  });
+  if (S.runs[key].length > 48) S.runs[key].shift();
+  save();
+  renderResults();
+  renderTestCards();
+}
+
+/* 同一个灵敏度上的多轮取平均（而不是覆盖），这是降低方差最关键的一步 */
+function microPoints() {
+  var dpi = clamp(+S.dpi || 800, 100, 32000);
+  var map = {};
+  S.runs.micro.forEach(function (r) {
+    if (r.sv !== SCORE_VERSION) return;
+    if (r.dpi && Math.abs(r.dpi - dpi) > 1) return;
+    var k = round3(r.sens);
+    if (!map[k]) map[k] = { sens: r.sens, score: 0, acc: 0, eff: 0, tps: 0, medT: 0, hits: 0, count: 0, n: 0 };
+    var o = map[k];
+    o.score += r.score; o.acc += r.acc; o.eff += r.eff; o.tps += r.tps;
+    o.medT += (r.medT || 0); o.hits += (r.hits || 0); o.count += (r.count || 0); o.n++;
+  });
+  var out = Object.keys(map).map(function (k) {
+    var o = map[k];
+    o.score /= o.n; o.acc /= o.n; o.eff /= o.n; o.tps /= o.n; o.medT /= o.n;
+    return o;
+  });
+  out.sort(function (a, b) { return a.sens - b.sens; });
+  return out;
+}
+
+function validRuns(kind) {
+  var dpi = clamp(+S.dpi || 800, 100, 32000);
+  return (S.runs[kind] || []).filter(function (r) {
+    return r.sv === SCORE_VERSION && (!r.dpi || Math.abs(r.dpi - dpi) <= 1);
+  });
+}
+
+function nearestRun(arr, sens) {
+  if (!arr || !arr.length) return null;
+  return arr.reduce(function (a, c) {
+    return Math.abs(Math.log(c.sens) - Math.log(sens)) < Math.abs(Math.log(a.sens) - Math.log(sens)) ? c : a;
+  });
+}
+
+/* 曲线上“得分不低于峰值 ratio”的灵敏度区间 */
+function plateau(fit, ratio) {
+  if (!fit || fit.a >= -1e-9 || !isFinite(fit.vertex)) return null;
+  var peak = fit.at(fit.vertex);
+  var thr = peak * ratio;
+  var a = fit.a, b = fit.b, c = fit.c - thr;
+  var disc = b * b - 4 * a * c;
+  if (disc <= 0) return null;
+  var sq = Math.sqrt(disc);
+  var r1 = (-b - sq) / (2 * a), r2 = (-b + sq) / (2 * a);
+  var lo = Math.exp(Math.min(r1, r2)), hi = Math.exp(Math.max(r1, r2));
+  if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return null;
+  return [lo, hi];
+}
+
+function analyze() {
+  var dpi = clamp(+S.dpi || 800, 100, 32000);
+  var pad = clamp(+S.pad || 45, 10, 200);
+  var b = refreshBaseline();
+  var log = [];
+  var sag = function (v) { return '<b class="val">' + f3(v) + '</b>'; };
+  var pct = function (v) { return Math.round(v * 100) + '%'; };
+
+  var pts = microPoints();
+  var totalRounds = pts.reduce(function (s, p) { return s + p.n; }, 0);
+  var bestPts = pts.slice().sort(function (a, c) { return c.score - a.score; });
+  var sens = b.sens, fit = null, band = null, vertex = null;
+
+  log.push('起点：按档案推导的基准灵敏度 ' + sag(b.sens) + '（' + f1(b.cm) + ' cm/360°）' +
+    (b.src === 'current' ? '，来自你填写的现有手感。' : '，来自位置 / 握姿 / 垫宽。'));
+
+  if (pts.length >= 3) {
+    fit = fitQuad(pts.map(function (r) { return { x: Math.log(r.sens), y: r.score }; }));
+    var best = bestPts[0];
+    if (fit && fit.a < -1e-7 && isFinite(fit.vertex)) {
+      var xmin = Math.log(pts[0].sens), xmax = Math.log(pts[pts.length - 1].sens);
+      vertex = Math.exp(clamp(fit.vertex, xmin - 0.08, xmax + 0.08));
+      /* 收缩估计：顶点 45% + 实测最高分 55%，并锁在最高分点 ±25% 内。
+         纯顶点对噪声极其敏感，这一步能显著压低“三次结果差很多”。 */
+      var blended = Math.exp(0.45 * Math.log(vertex) + 0.55 * Math.log(best.sens));
+      blended = clamp(blended, best.sens * 0.80, best.sens * 1.25);
+      sens = blended;
+      log.push(totalRounds + ' 轮微目标测试（覆盖 ' + pts.length + ' 个灵敏度档）拟合二次曲线：顶点 ' +
+        sag(vertex) + '，实测最高分 ' + sag(best.sens) + '，收缩后取 ' + sag(sens) + '（R² ' + fit.r2.toFixed(2) + '）。');
+      band = plateau(fit, 0.90);
+      if (!band) band = [sens * 0.965, sens * 1.035];
+      band = [Math.max(band[0], sens * 0.93), Math.min(band[1], sens * 1.07)];
+    } else {
+      sens = best.sens;
+      log.push('得分曲线没有形成向下的峰值，取实测最高分 ' + sag(sens) + '。');
+      band = [sens * 0.955, sens * 1.045];
+    }
+  } else if (pts.length === 2) {
+    sens = bestPts[0].sens;
+    band = [sens * 0.95, sens * 1.05];
+    log.push('有 2 个灵敏度档的数据，取较高分的 ' + sag(sens) + '；再补一轮就能做曲线拟合。');
+  } else if (pts.length === 1) {
+    var r0 = pts[0];
+    sens = r0.sens;
+    band = [sens * 0.95, sens * 1.05];
+    log.push('只有 1 个灵敏度档的数据：' + sag(r0.sens) + '（' + r0.n + ' 轮，命中率 ' + pct(r0.acc) + '）。');
+    if (r0.acc < 0.8) { sens *= 0.92; log.push('命中率偏低，先下调 8% 到 ' + sag(sens) + ' 再验证。'); }
+    else if (r0.acc > 0.95 && r0.tps > 1.3) { sens *= 1.05; log.push('又快又准，上调 5% 到 ' + sag(sens) + ' 试试更灵活的手感。'); }
+  } else {
+    var fr = validRuns('flick');
+    if (fr.length) {
+      var f0 = fr[fr.length - 1];
+      sens = f0.sens;
+      band = [sens * 0.95, sens * 1.05];
+      log.push('还没有微目标数据，先用甩枪轮次 ' + sag(sens) + '（命中率 ' + pct(f0.acc) + '）作参考。');
+    }
+  }
+
+  /* —— 复核规则：只在极端情况下才动，避免单轮噪声把结论推来推去 —— */
+  var flick = nearestRun(validRuns('flick'), sens);
+  if (flick) {
+    if (flick.acc < 0.75) {
+      var b1 = sens; sens *= 0.96;
+      log.push('甩枪命中率只有 ' + pct(flick.acc) + '%，大角度定位失控 → 下调 4%（' + f3(b1) + ' → ' + f3(sens) + '）。');
+    } else {
+      log.push('甩枪复核：命中率 ' + pct(flick.acc) + '%、路径效率 ' + pct(flick.eff) + '%，未触发调整。');
+    }
+  }
+  var trArr = validRuns('track');
+  if (trArr.length) {
+    var tr = trArr[trArr.length - 1];
+    if (tr.onPct < 0.35) {
+      var b2 = sens; sens *= 0.97;
+      log.push('追踪覆盖率仅 ' + pct(tr.onPct) + '%，跟枪严重抖动 → 下调 3%（' + f3(b2) + ' → ' + f3(sens) + '）。');
+    } else {
+      log.push('追踪复核：覆盖率 ' + pct(tr.onPct) + '%、平均偏差 ' + f2(tr.meanErr) + '°，未触发调整。');
+    }
+  }
+  var tuArr = validRuns('turn');
+  if (tuArr.length) {
+    var tu = tuArr[tuArr.length - 1];
+    if (tu.acc < 0.5) {
+      var b3 = sens; sens *= 1.05;
+      log.push('转身测试只完成 ' + tu.hits + '/' + tu.count + ' 次 180° 回正 → 上调 5%（' + f3(b3) + ' → ' + f3(sens) + '）。');
+    } else {
+      log.push('转身复核：180° 平均 ' + Math.round(tu.meanT) + ' ms 到位，垫面行程够用。');
+    }
+  }
+
+  /* 鼠标垫物理约束 */
+  var cm = cm360Of(sens, dpi);
+  var padMax = Math.max(22, pad * 1.45);
+  if (cm > padMax) {
+    var b4 = sens;
+    sens = sensOfCm(padMax, dpi);
+    log.push('受 ' + pad + ' cm 鼠标垫宽度限制 → 收紧到 ' + f1(padMax) + ' cm/360°（' + f3(b4) + ' → ' + f3(sens) + '）。');
+  }
+
+  /* 范围与异常 */
+  var warn = '';
+  var legal = clamp(sens, 0.1, 10);
+  if (Math.abs(legal - sens) > 1e-6) {
+    warn = '理论值 ' + f3(sens) + ' 超出游戏可输入范围 0.1–10.0，已收到边界。';
+    log.push(warn);
+    sens = legal;
+  }
+  var recDpi = 0;
+  if (cm360Of(sens, dpi) > 0 && sens <= 0.105) {
+    recDpi = Math.max(400, Math.floor(K360 / (0.1 * cm360Of(sens, dpi)) / 50) * 50);
+  }
+  sens = round3(clamp(sens, 0.1, 10));
+
+  /* 推荐区间 */
+  if (band) {
+    band = [round3(clamp(band[0], 0.1, 10)), round3(clamp(band[1], 0.1, 10))];
+    if (band[1] < band[0]) { var tmp = band[0]; band[0] = band[1]; band[1] = tmp; }
+    band[0] = Math.min(band[0], sens);
+    band[1] = Math.max(band[1], sens);
+  } else {
+    band = [round3(sens * 0.97), round3(sens * 1.03)];
+  }
+
+  /* 历次一致性 */
+  var hist = (S.history || []).filter(function (h) {
+    return h && h.sv === SCORE_VERSION && (!h.dpi || Math.abs(h.dpi - dpi) <= 1);
+  });
+  var histVals = hist.slice(-6).map(function (h) { return h.sens; });
+  var spread = 0;
+  if (histVals.length >= 2) {
+    spread = Math.max.apply(null, histVals) / Math.min.apply(null, histVals) - 1;
+    var listTxt = histVals.map(f3).join(' / ');
+    if (spread <= 0.05) log.push('历次结果 ' + listTxt + '，波动 ' + pct(spread) + '，一致性好。');
+    else if (spread <= 0.12) log.push('历次结果 ' + listTxt + '，波动 ' + pct(spread) + '，属于正常测量噪声。');
+    else log.push('历次结果 ' + listTxt + '，波动 ' + pct(spread) + '；本次已把全部轮次放在一起拟合，想更稳可以再做一轮。');
+  }
+
+  /* 可信度 */
+  var conf = 0.12;
+  if (pts.length >= 3) conf += 0.26; else if (pts.length >= 1) conf += 0.14;
+  if (fit && fit.r2 > 0.35) conf += 0.10;
+  if (totalRounds >= 12) conf += 0.16; else if (totalRounds >= 8) conf += 0.12; else if (totalRounds >= 4) conf += 0.06;
+  if (validRuns('flick').length) conf += 0.08;
+  if (validRuns('track').length) conf += 0.06;
+  if (validRuns('turn').length) conf += 0.04;
+  if (histVals.length >= 2 && spread <= 0.06) conf += 0.10;
+  else if (histVals.length >= 2 && spread > 0.15) conf -= 0.08;
+  conf = clamp(conf, 0.1, 0.96);
+
+  var finalCm = cm360Of(sens, dpi);
+  return {
+    sens: sens, cm: finalCm, edpi: edpiOf(sens, dpi), dpi: dpi, pad: pad,
+    band: band, fit: fit, pts: pts, vertex: vertex,
+    conf: conf, log: log, warn: warn, recDpi: recDpi,
+    stable: round3(clamp(sens * 0.94, 0.1, 10)),
+    speed: round3(clamp(sens * 1.06, 0.1, 10)),
+    histVals: histVals, spread: spread, totalRounds: totalRounds,
+    runs: S.runs.micro.length + S.runs.flick.length + S.runs.track.length + S.runs.turn.length
+  };
+}
+
+/* =====================================================================
+   结果渲染
+   ===================================================================== */
+function renderResults() {
+  var hasAny = validRuns('micro').length || validRuns('flick').length || validRuns('track').length || validRuns('turn').length;
+  var body = $('#resultBody'), empty = $('#resultEmpty');
+  if (!hasAny) { empty.hidden = false; body.hidden = true; S.final = null; return; }
+  empty.hidden = true; body.hidden = false;
+
+  var res = analyze();
+  S.final = res;
+  save();
+
+  $('#finalSens').textContent = f3(res.sens);
+  $('#resEdpi').textContent = Math.round(res.edpi);
+  $('#resCm').textContent = f1(res.cm);
+  $('#res180').textContent = f1(res.cm / 2);
+  $('#res90').textContent = f1(res.cm / 4);
+  $('#resConf').textContent = Math.round(res.conf * 100) + '%';
+  $('#confBar').style.width = Math.round(res.conf * 100) + '%';
+  $('#resRuns').textContent = res.runs;
+  $('#resRunsTip').textContent = res.totalRounds >= 8 ? '累计 ' + res.totalRounds + ' 轮，结论稳定' : '累计 ' + res.totalRounds + ' 轮，建议再测一轮';
+  $('#stepSens').textContent = f3(res.sens);
+  $('#stepDpi').textContent = res.dpi;
+
+  $('#sensBand').textContent = '推荐区间 ' + f3(res.band[0]) + ' – ' + f3(res.band[1]) + ' · 区间内差别很小';
+  $('#bandText').textContent = f3(res.band[0]) + ' – ' + f3(res.band[1]);
+  $('#totalText').textContent = res.totalRounds + ' 轮 / ' + res.pts.length + ' 档';
+  $('#stableText').textContent = res.histVals.length >= 2
+    ? ('波动 ' + Math.round(res.spread * 100) + '%')
+    : '首轮';
+  $('#stableText').style.color = res.histVals.length >= 2
+    ? (res.spread <= 0.06 ? 'var(--mint)' : (res.spread <= 0.12 ? 'var(--amber)' : 'var(--red)'))
+    : '';
+
+  $('#vStable').textContent = f3(res.stable);
+  $('#vBalanced').textContent = f3(res.sens);
+  $('#vSpeed').textContent = f3(res.speed);
+
+  var ol = $('#adjLog');
+  ol.innerHTML = '';
+  res.log.forEach(function (t) {
+    var li = document.createElement('li');
+    li.innerHTML = '<span>' + t + '</span>';
+    ol.appendChild(li);
+  });
+
+  drawChart(res);
+  renderMetricsTable();
+  updateAds();
+  updateConv();
+  updateFreeButton();
+
+  var note = $('#chartNote');
+  if (res.fit && res.pts.length >= 3) {
+    note.textContent = '横轴为对数刻度灵敏度，纵轴为该档位的综合得分（中位命中用时 × 命中率 × 路径效率）。红点是实测档位，曲线为最小二乘拟合，绿色带是“得分不低于峰值 90%”的区间——带内任意数值的差别都在测量误差之内，不必纠结小数点。多次测试的轮次会累计到同一条曲线上。';
+  } else {
+    note.textContent = '完成「一键智能生成」后，这里会显示各灵敏度档的得分与拟合曲线；现在数据量还少，结论只作参考。再测一次会把新轮次自动并入。';
+  }
+}
+
+function drawChart(res) {
+  var cv = $('#chart');
+  if (!cv) return;
+  var W = Math.max(320, cv.clientWidth || 720), H = 230;
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  cv.style.height = H + 'px';
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  var pts = res.pts || [];
+  var padL = 52, padR = 20, padT = 18, padB = 30;
+  var iw = W - padL - padR, ih = H - padT - padB;
+
+  var xs = pts.map(function (p) { return Math.log(p.sens); });
+  if (res.band) { xs.push(Math.log(res.band[0]), Math.log(res.band[1])); }
+  if (res.sens) xs.push(Math.log(res.sens));
+  if (!xs.length) { xs = [Math.log(0.3), Math.log(0.4)]; }
+  var xmin = Math.min.apply(null, xs), xmax = Math.max.apply(null, xs);
+  if (xmax - xmin < 0.05) { xmin -= 0.05; xmax += 0.05; }
+  var m = (xmax - xmin) * 0.14;
+  xmin -= m; xmax += m;
+
+  var ys = pts.map(function (p) { return p.score; });
+  var ymax = Math.max.apply(null, ys.concat([0.1]));
+  var ymin = Math.min.apply(null, ys.concat([0]));
+  ymin = Math.max(0, ymin - (ymax - ymin) * 0.25);
+  ymax = ymax + (ymax - ymin) * 0.18;
+  if (ymax - ymin < 1e-4) ymax = ymin + 1;
+
+  function X(v) { return padL + (Math.log(v) - xmin) / (xmax - xmin) * iw; }
+  function Y(v) { return padT + ih - (v - ymin) / (ymax - ymin) * ih; }
+
+  /* 推荐区间 */
+  if (res.band && res.band[1] > res.band[0]) {
+    var bx0 = Math.max(padL, X(res.band[0])), bx1 = Math.min(W - padR, X(res.band[1]));
+    if (bx1 > bx0) {
+      ctx.fillStyle = 'rgba(56,232,192,0.08)';
+      ctx.fillRect(bx0, padT, bx1 - bx0, ih);
+      ctx.strokeStyle = 'rgba(56,232,192,0.22)';
+      ctx.beginPath();
+      ctx.moveTo(bx0, padT); ctx.lineTo(bx0, padT + ih);
+      ctx.moveTo(bx1, padT); ctx.lineTo(bx1, padT + ih);
+      ctx.stroke();
+    }
+  }
+
+  /* 网格 */
+  ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+  ctx.lineWidth = 1;
+  ctx.font = '10px "Bahnschrift", sans-serif';
+  ctx.fillStyle = 'rgba(142,160,174,0.85)';
+  for (var g = 0; g <= 4; g++) {
+    var yy = padT + ih * g / 4;
+    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W - padR, yy); ctx.stroke();
+    var vv = ymax - (ymax - ymin) * g / 4;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(vv.toFixed(2), padL - 8, yy);
+  }
+
+  /* 拟合曲线 */
+  if (res.fit && pts.length >= 3) {
+    ctx.beginPath();
+    var started = false;
+    for (var i = 0; i <= 80; i++) {
+      var lx = xmin + (xmax - xmin) * i / 80;
+      var ly = res.fit.at(lx);
+      var px = padL + (lx - xmin) / (xmax - xmin) * iw;
+      var py = Y(ly);
+      if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+    }
+    var grd = ctx.createLinearGradient(0, padT, 0, padT + ih);
+    grd.addColorStop(0, 'rgba(255,70,85,0.9)');
+    grd.addColorStop(1, 'rgba(255,70,85,0.25)');
+    ctx.strokeStyle = grd;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  /* 推荐线 */
+  if (res.sens) {
+    var fx = X(res.sens);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(56,232,192,0.8)';
+    ctx.beginPath(); ctx.moveTo(fx, padT - 6); ctx.lineTo(fx, padT + ih); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(56,232,192,1)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = '11px "Bahnschrift", sans-serif';
+    ctx.fillText('推荐 ' + f3(res.sens), clamp(fx, padL + 40, W - padR - 40), padT - 4);
+  }
+
+  /* 点 */
+  pts.forEach(function (p) {
+    var px = X(p.sens), py = Y(p.score);
+    ctx.beginPath(); ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#ff4655'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.fillStyle = 'rgba(236,232,225,0.9)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font = '10px "Bahnschrift", sans-serif';
+    ctx.fillText(f3(p.sens), px, py + 9);
+  });
+
+  /* 轴 */
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.beginPath(); ctx.moveTo(padL, padT + ih); ctx.lineTo(W - padR, padT + ih); ctx.stroke();
+  ctx.fillStyle = 'rgba(106,124,138,1)';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.font = '10px "Bahnschrift", sans-serif';
+  ctx.fillText('得分', 8, padT + 8);
+  ctx.textAlign = 'right';
+  ctx.fillText('灵敏度 →', W - padR, H - 8);
+}
+
+function renderMetricsTable() {
+  var tbody = $('#metricTable');
+  if (!tbody) return;
+  var rows = [];
+  ['micro', 'flick', 'track', 'turn'].forEach(function (k) {
+    (S.runs[k] || []).forEach(function (r) { rows.push({ k: k, r: r }); });
+  });
+  rows.sort(function (a, b) { return (a.r.at || 0) - (b.r.at || 0); });
+  tbody.innerHTML = '';
+  var names = { micro: '微目标精准', flick: '悬停甩枪', track: '动态追踪', turn: '转身校准' };
+  rows.forEach(function (row, i) {
+    var r = row.r, tr = document.createElement('tr');
+    var key, cls, label;
+    if (row.k === 'track') {
+      key = '覆盖 ' + Math.round(r.onPct * 100) + '% · 偏差 ' + f2(r.meanErr) + '°';
+      cls = r.onPct > 0.6 ? 'ok' : (r.onPct > 0.4 ? 'warn' : 'bad');
+      label = r.onPct > 0.6 ? '稳定' : (r.onPct > 0.4 ? '一般' : '偏抖');
+    } else {
+      key = '命中 ' + r.hits + '/' + r.count + ' · 效率 ' + Math.round(r.eff * 100) + '% · ' + Math.round(r.meanT) + 'ms';
+      cls = r.acc >= 0.9 ? 'ok' : (r.acc >= 0.7 ? 'warn' : 'bad');
+      label = r.acc >= 0.9 ? '好' : (r.acc >= 0.7 ? '一般' : '偏低');
+    }
+    tr.innerHTML = '<td class="n">' + String(i + 1).padStart(2, '0') + '</td>' +
+      '<td>' + names[row.k] + '</td>' +
+      '<td class="n">' + f3(r.sens) + '</td>' +
+      '<td>' + key + '</td>' +
+      '<td class="n">' + f2(r.score) + '</td>' +
+      '<td><span class="pill ' + cls + '">' + label + '</span></td>';
+    tbody.appendChild(tr);
+  });
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--dim2)">还没有测试数据</td></tr>';
+  }
+}
+
+function renderTestCards() {
+  var map = [
+    ['rFlick', 'flick', function (r) {
+      return '最近一轮 <b>' + f3(r.sens) + '</b> · 命中率 ' + Math.round(r.acc * 100) + '% · 效率 ' + Math.round(r.eff * 100) + '%';
+    }],
+    ['rMicro', 'micro', function (r) {
+      return '最近一轮 <b>' + f3(r.sens) + '</b> · 命中 ' + r.hits + '/' + (r.count || 12) + ' · 得分 ' + f2(r.score);
+    }],
+    ['rTrack', 'track', function (r) {
+      return '最近一轮 <b>' + f3(r.sens) + '</b> · 覆盖率 ' + Math.round(r.onPct * 100) + '% · 偏差 ' + f2(r.meanErr) + '°';
+    }],
+    ['rTurn', 'turn', function (r) {
+      return '最近一轮 <b>' + f3(r.sens) + '</b> · 平均 ' + Math.round(r.meanT) + 'ms · 命中 ' + r.hits + '/' + (r.count || 4);
+    }]
+  ];
+  map.forEach(function (it) {
+    var el = $('#' + it[0]);
+    if (!el) return;
+    var arr = S.runs[it[1]];
+    if (arr && arr.length) el.innerHTML = it[2](arr[arr.length - 1]);
+    else el.textContent = '尚未测试';
+  });
+  var fr = S.runs.free;
+  var fEl = $('#rFree');
+  if (fEl) {
+    fEl.textContent = S.final ? ('当前推荐 ' + f3(S.final.sens) + ' · 可实时微调') : '需要先有推荐数值';
+  }
+}
+
+function updateFreeButton() {
+  var btn = $('#btnFree');
+  if (!btn) return;
+  var ok = !!(S.final && S.final.sens);
+  btn.disabled = !ok;
+  btn.textContent = ok ? '开始 · 试枪房' : '先完成测试';
+}
+
+function updateAds() {
+  var fs = S.final ? S.final.sens : 0.35;
+  var os = parseFloat($('#adsOldSens').value);
+  var om = parseFloat($('#adsOldMul').value);
+  var out = $('#adsNewMul');
+  if (!isFinite(os) || !isFinite(om) || os <= 0 || om <= 0) { out.textContent = '1.000'; return; }
+  var nm = os * om / fs;
+  out.textContent = (Math.round(clamp(nm, 0.1, 3) * 1000) / 1000).toFixed(3);
+  out.style.color = nm > 2.4 ? 'var(--amber)' : 'var(--mint)';
+}
+
+function updateConv() {
+  var el = $('#convDpi');
+  if (!el) return;
+  var out = $('#convOut'), note = $('#convNote');
+  var dpi = clamp(parseFloat(el.value) || 1600, 100, 32000);
+  if (!S.final) { out.textContent = '—'; return; }
+  var v = K360 / (S.final.cm * dpi);
+  out.textContent = f3(clamp(v, 0.1, 10));
+  if (v < 0.1 || v > 10) {
+    out.style.color = 'var(--amber)';
+    note.textContent = '在 ' + dpi + ' DPI 下理论值 ' + f3(v) + ' 超出游戏可输入范围（0.1–10），建议保持 ' + S.final.dpi + ' DPI 或换一档更小的 DPI。';
+  } else {
+    out.style.color = '';
+    note.textContent = '保持同一个 cm/360°（' + f1(S.final.cm) + ' cm），只改鼠标 DPI 时用这一行换算。';
+  }
+}
+
+function buildReport() {
+  if (!S.final) return '';
+  var r = S.final;
+  var lines = [
+    'VALORANT 个人灵敏度报告',
+    '------------------------------',
+    'DPI: ' + r.dpi,
+    '灵敏度（瞄准）: ' + f3(r.sens),
+    'eDPI: ' + Math.round(r.edpi),
+    'cm/360°: ' + f1(r.cm) + ' cm',
+    '180° 行程: ' + f1(r.cm / 2) + ' cm',
+    '稳定档: ' + f3(r.stable) + ' / 平衡档: ' + f3(r.sens) + ' / 速度档: ' + f3(r.speed),
+    '测试可信度: ' + Math.round(r.conf * 100) + '%',
+    '',
+    '推导过程:'
+  ];
+  r.log.forEach(function (t, i) {
+    lines.push((i + 1) + '. ' + t.replace(/<[^>]+>/g, ''));
+  });
+  lines.push('', '换算基准：VALORANT yaw 0.07°/count，FOV 103°。');
+  return lines.join('\n');
+}
+
+/* =====================================================================
+   自动流程
+   ===================================================================== */
+var autoRunning = false;
+function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+function stepUI(k, cls, text) {
+  var li = $('#autoSteps').querySelector('li[data-k="' + k + '"]');
+  if (!li) return;
+  li.classList.remove('on', 'done');
+  if (cls) li.classList.add(cls);
+  var i = li.querySelector('i');
+  if (i) i.textContent = cls === 'done' ? '✓' : (cls === 'on' ? '●' : '·');
+  if (text !== undefined) {
+    var em = li.querySelector('em');
+    if (em) em.textContent = text;
+  }
+}
+function resetSteps() {
+  $$('#autoSteps li').forEach(function (li) {
+    li.classList.remove('on', 'done');
+    li.querySelector('em').textContent = '待运行';
+    li.querySelector('i').textContent = '·';
+  });
+}
+function setBusy(b) {
+  ['btnAuto', 'btnFlick', 'btnMicro', 'btnTrack', 'btnTurn', 'btnFree'].forEach(function (id) {
+    var el = $('#' + id);
+    if (el) el.disabled = b ? true : (id === 'btnFree' ? !S.final : false);
+  });
+  var a = $('#btnAuto');
+  if (a) a.textContent = b ? '测试进行中…' : '开始智能测试';
+}
+function scoreTag(m) {
+  if (!m) return '—';
+  if (m.test === 'track') return Math.round(m.onPct * 100) + '%';
+  return Math.round(m.acc * 100) + '%';
+}
+
+async function runAuto() {
+  if (autoRunning) return;
+  autoRunning = true;
+  setBusy(true);
+  resetSteps();
+
+  var b = refreshBaseline();
+  var prev = (S.final && (!S.final.dpi || Math.abs(S.final.dpi - S.dpi) < 1)) ? S.final.sens : null;
+  var base = prev || b.sens;
+  var N = TESTS.micro.count;
+
+  try {
+    /* ---- 热身（不计分，吸收学习效应） ---- */
+    stepUI('warm', 'on', '进行中');
+    var m = await Stage.runTest('micro', base, {
+      auto: true, count: 8, kicker: 'WARM UP', title: '热身 · 微目标',
+      onRound: null
+    });
+    if (!m) { autoFail(); return; }
+    stepUI('warm', 'done', m.hits + '/' + m.count);
+    await wait(650);
+
+    /* ---- 三个主档：0.80× / 1.00× / 1.25×，顺序随机以抵消学习与疲劳 ---- */
+    var levels = [round3(clamp(base * 0.80, 0.1, 10)), round3(clamp(base, 0.1, 10)), round3(clamp(base * 1.25, 0.1, 10))];
+    var order = [0, 1, 2];
+    for (var sh = 2; sh > 0; sh--) {
+      var rj = Math.floor(Math.random() * (sh + 1));
+      var tmp = order[sh]; order[sh] = order[rj]; order[rj] = tmp;
+    }
+    var stepKeys = ['r1', 'r2', 'r3'];
+    for (var k = 0; k < 3; k++) {
+      var lv = levels[order[k]];
+      var key = stepKeys[k];
+      var li = $('#autoSteps').querySelector('li[data-k="' + key + '"]');
+      if (li) {
+        li.querySelector('b').textContent = '第 ' + (k + 1) + ' 轮 · ' + f3(lv);
+        li.querySelector('span').textContent = (lv / base >= 1 ? '+' : '') + Math.round((lv / base - 1) * 100) + '% 档';
+      }
+      stepUI(key, 'on', '进行中');
+      m = await Stage.nextRound('micro', lv, N);
+      if (!m) { autoFail(); return; }
+      recordRun(m);
+      stepUI(key, 'done', Math.round(m.acc * 100) + '%');
+      await wait(750);
+    }
+
+    /* ---- 汇总所有已测轮次，找峰值，决定精修点 ---- */
+    stepUI('fit', 'on', '计算中');
+    var pre = analyze();
+    var sStar = pre.sens;
+    var near = pre.pts.some(function (p) { return Math.abs(Math.log(p.sens / sStar)) < 0.025; });
+    var refineSens = sStar;
+    if (near) {
+      var above = pre.pts.filter(function (p) { return p.sens > sStar; }).sort(function (a, c) { return a.sens - c.sens; })[0];
+      var below = pre.pts.filter(function (p) { return p.sens < sStar; }).sort(function (a, c) { return c.sens - a.sens; })[0];
+      var upScore = above ? above.score : -1, downScore = below ? below.score : -1;
+      refineSens = round3(clamp(sStar * (upScore >= downScore ? 1.07 : 0.935), 0.1, 10));
+    }
+    stepUI('fit', 'done', '峰值 ' + f3(sStar));
+    await wait(700);
+
+    var li4 = $('#autoSteps').querySelector('li[data-k="r4"]');
+    if (li4) {
+      li4.querySelector('b').textContent = '精修 · ' + f3(refineSens);
+      li4.querySelector('span').textContent = '在峰值附近再补一轮';
+    }
+    stepUI('r4', 'on', '进行中');
+    m = await Stage.nextRound('micro', refineSens, N);
+    if (!m) { autoFail(); return; }
+    recordRun(m);
+    stepUI('r4', 'done', Math.round(m.acc * 100) + '%');
+    await wait(750);
+
+    /* ---- 重新汇总（此时已有 4 个档 + 历史轮次），得到最终值 ---- */
+    var post = analyze();
+
+    /* ---- 甩枪复核 ---- */
+    stepUI('flick', 'on', '进行中');
+    m = await Stage.nextRound('flick', post.sens, 12);
+    if (!m) { autoFail(); return; }
+    recordRun(m);
+    stepUI('flick', 'done', Math.round(m.acc * 100) + '%');
+    await wait(750);
+
+    /* ---- 追踪复核 ---- */
+    stepUI('track', 'on', '进行中');
+    m = await Stage.nextRound('track', post.sens, 1);
+    if (!m) { autoFail(); return; }
+    recordRun(m);
+    stepUI('track', 'done', Math.round(m.onPct * 100) + '%');
+    await wait(800);
+
+    Stage.closeStage();
+
+    /* ---- 记录本次结果到历史，供后续累计 ---- */
+    var fin = analyze();
+    S.history.push({ at: Date.now(), sens: fin.sens, dpi: fin.dpi, sv: SCORE_VERSION, rounds: fin.totalRounds });
+    if (S.history.length > 12) S.history.shift();
+    save();
+
+    renderResults();
+    renderTestCards();
+    toast('生成完成：' + f3(S.final.sens) + '（区间 ' + f3(S.final.band[0]) + '–' + f3(S.final.band[1]) + '）');
+    setTimeout(function () {
+      var el = document.getElementById('s4');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 260);
+  } catch (e) {
+    console.error(e);
+    autoFail();
+  } finally {
+    autoRunning = false;
+    setBusy(false);
+  }
+}
+
+function autoFail() {
+  resetSteps();
+  Stage.closeStage();
+  toast('已中止，可重新开始');
+}
+
+/* =====================================================================
+   交互绑定
+   ===================================================================== */
+function wireUI() {
+  var b = function () { return refreshBaseline().sens; };
+
+  $('#btnFlick').addEventListener('click', async function () {
+    await Stage.runTest('flick', b(), { onRound: recordRun });
+  });
+  $('#btnMicro').addEventListener('click', async function () {
+    await Stage.runTest('micro', b(), { onRound: recordRun });
+  });
+  $('#btnTrack').addEventListener('click', async function () {
+    await Stage.runTest('track', b(), { onRound: recordRun });
+  });
+  $('#btnTurn').addEventListener('click', async function () {
+    await Stage.runTest('turn', b(), { onRound: recordRun });
+  });
+  $('#btnFree').addEventListener('click', async function () {
+    var s = S.final ? S.final.sens : b();
+    var m = await Stage.runTest('free', s, {});
+    if (m && m.mul && Math.abs(m.mul - 1) > 0.005) {
+      toast('试枪微调到 ' + f3(m.sens) + '（' + (m.mul > 1 ? '+' : '') + Math.round((m.mul - 1) * 100) + '%）');
+    }
+  });
+  $('#btnAuto').addEventListener('click', runAuto);
+
+  $('#btnCopySens').addEventListener('click', function () {
+    if (S.final) copyText(f3(S.final.sens), '已复制灵敏度 ' + f3(S.final.sens));
+  });
+  $('#btnCopyReport').addEventListener('click', function () {
+    copyText(buildReport(), '完整报告已复制');
+  });
+  $$('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var el = $('#' + btn.getAttribute('data-copy'));
+      if (el) copyText(el.textContent.trim(), '已复制 ' + el.textContent.trim());
+    });
+  });
+  $('#btnCopyAds').addEventListener('click', function () {
+    copyText($('#adsNewMul').textContent, '已复制开镜倍率');
+  });
+  $('#adsOldSens').addEventListener('input', updateAds);
+  $('#adsOldMul').addEventListener('input', updateAds);
+  $('#convDpi').addEventListener('input', updateConv);
+  $('#btnCopyConv').addEventListener('click', function () {
+    copyText($('#convOut').textContent, '已复制 ' + $('#convOut').textContent);
+  });
+
+  $('#btnRegen').addEventListener('click', function () {
+    renderResults(); renderTestCards();
+    toast('已按现有数据重算');
+  });
+  $('#btnClear').addEventListener('click', function () {
+    if (!confirm('确定清空所有测试数据与档案？此操作不可撤销。')) return;
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { }
+    S.runs = { micro: [], flick: [], track: [], turn: [] };
+    S.history = [];
+    S.final = null; S.log = []; S.conf = 0;
+    S.sens = null; $('#fSens').value = '';
+    save();
+    renderResults(); renderTestCards(); updateFreeButton();
+    toast('已清空');
+  });
+
+  var guide = $('#guidePanel');
+  $('#btnGuide').addEventListener('click', function () {
+    if (!guide) return;
+    guide.hidden = !guide.hidden;
+    if (!guide.hidden) guide.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  /* 导航高亮 */
+  var secs = ['s1', 's2', 's3', 's4'].map(function (id) { return document.getElementById(id); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        $$('#nav a').forEach(function (a) {
+          a.classList.toggle('on', a.getAttribute('data-nav') === en.target.id);
+        });
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    secs.forEach(function (s) { if (s) io.observe(s); });
+  }
+}
+
+/* =====================================================================
+   启动
+   ===================================================================== */
+function init() {
+  load();
+  bindProfile();
+  refreshBaseline();
+  Stage.init();
+  wireUI();
+  renderTestCards();
+  renderResults();
+  updateFreeButton();
+  updateAds();
+  updateConv();
+}
+
+init();
+
+})();
+</script>
+
+
+</body>
+</html>

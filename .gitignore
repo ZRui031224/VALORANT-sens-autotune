@@ -1,0 +1,14 @@
+# 操作系统
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+
+# 本地临时文件与日志
+*.log
+_tmp/
+_test*.html
